@@ -22,7 +22,7 @@
           v-for="item in filteredProducts"
           :key="item.id"
           :product="item"
-          @add="cart.addToCart"
+          @add="quickAddToCart"
           @select="openDetail"
         />
       </section>
@@ -47,10 +47,43 @@
           Quantity
           <input v-model.number="quantity" type="number" min="1" />
         </label>
+        <label>
+          Notes for restaurant
+          <textarea
+            v-model="orderNotes"
+            rows="3"
+            placeholder="Less spicy, no peanuts, pack sauce separately..."
+          ></textarea>
+        </label>
+        <fieldset class="ingredient-wrap">
+          <legend>Customize ingredients</legend>
+          <div class="ingredient-head">
+            <p class="muted ingredient-status">
+              {{ selectedIngredients.length }} / {{ ingredientOptions.length }} selected
+            </p>
+            <div class="ingredient-tools">
+              <button type="button" class="chip-tool" @click="selectAllIngredients">All</button>
+              <button type="button" class="chip-tool" @click="resetIngredients">Reset</button>
+            </div>
+          </div>
+          <div class="ingredient-grid">
+            <button
+              v-for="ingredient in ingredientOptions"
+              :key="ingredient"
+              type="button"
+              class="ingredient-chip"
+              :class="{ selected: selectedIngredients.includes(ingredient) }"
+              :aria-pressed="selectedIngredients.includes(ingredient)"
+              @click="toggleIngredient(ingredient)"
+            >
+              {{ ingredient }}
+            </button>
+          </div>
+        </fieldset>
         <p class="muted">Estimated subtotal: ${{ (activeProduct.price * quantity).toFixed(2) }}</p>
       </div>
       <div class="detail-actions">
-        <button class="btn btn-primary" @click="addSelected">Add to Cart</button>
+        <button class="btn btn-primary" @click="addSelected($event)">Add to Cart</button>
         <button class="btn btn-secondary" @click="closeDetail">Cancel</button>
       </div>
     </aside>
@@ -75,6 +108,8 @@ const cart = useCartStore()
 const selectedCategory = ref('All')
 const activeProduct = ref(null)
 const quantity = ref(1)
+const orderNotes = ref('')
+const selectedIngredients = ref([])
 
 const categories = [...new Set(products.map((item) => item.cuisineCategory))]
 const filteredProducts = computed(() =>
@@ -86,25 +121,97 @@ const filteredProducts = computed(() =>
 function openDetail(product) {
   activeProduct.value = product
   quantity.value = 1
+  orderNotes.value = ''
+  selectedIngredients.value = getDefaultIngredients(product)
 }
 
 function closeDetail() {
   activeProduct.value = null
   quantity.value = 1
+  orderNotes.value = ''
+  selectedIngredients.value = []
 }
 
-function addSelected() {
+function addSelected(event) {
   if (!activeProduct.value) return
-  for (let i = 0; i < quantity.value; i += 1) {
-    cart.addToCart(activeProduct.value)
-  }
+  const customIngredients = selectedIngredients.value
+  const removedIngredients = ingredientOptions.value.filter(
+    (item) => !selectedIngredients.value.includes(item)
+  )
+  cart.addToCart({
+    product: activeProduct.value,
+    quantity: quantity.value,
+    notes: orderNotes.value.trim(),
+    customIngredients,
+    removedIngredients
+  })
+  triggerCartFlyAnimation(event)
   closeDetail()
+}
+
+function quickAddToCart(product, event) {
+  cart.addToCart(product)
+  triggerCartFlyAnimation(event)
 }
 
 function onProductImgError(event) {
   if (event.target.src !== foodImageFallbackUrl) {
     event.target.src = foodImageFallbackUrl
   }
+}
+
+const ingredientOptions = computed(() => {
+  if (!activeProduct.value) return []
+  return getDefaultIngredients(activeProduct.value)
+})
+
+function getDefaultIngredients(product) {
+  const key = `${product.cuisineCategory} ${product.category}`.toLowerCase()
+  const options = [
+    'Protein',
+    'Rice',
+    'Vegetables',
+    'Sauce',
+    'Herbs',
+    'Cheese',
+    'Onion',
+    'Garlic'
+  ]
+  if (key.includes('pizza') || key.includes('pasta')) return ['Cheese', 'Sauce', 'Garlic', 'Mushroom', 'Olives']
+  if (key.includes('burger') || key.includes('wrap')) return ['Cheese', 'Onion', 'Lettuce', 'Tomato', 'Sauce']
+  if (key.includes('ramen') || key.includes('noodle')) return ['Noodles', 'Egg', 'Spring onion', 'Chili', 'Broth']
+  if (key.includes('curry') || key.includes('rice')) return ['Protein', 'Rice', 'Chili', 'Herbs', 'Sauce']
+  return options
+}
+
+function toggleIngredient(ingredient) {
+  if (!selectedIngredients.value.includes(ingredient)) {
+    selectedIngredients.value = [...selectedIngredients.value, ingredient]
+    return
+  }
+  selectedIngredients.value = selectedIngredients.value.filter((item) => item !== ingredient)
+}
+
+function selectAllIngredients() {
+  selectedIngredients.value = [...ingredientOptions.value]
+}
+
+function resetIngredients() {
+  if (!activeProduct.value) return
+  selectedIngredients.value = getDefaultIngredients(activeProduct.value)
+}
+
+function triggerCartFlyAnimation(event) {
+  if (!event?.currentTarget) return
+  const rect = event.currentTarget.getBoundingClientRect()
+  window.dispatchEvent(
+    new CustomEvent('cart-fly', {
+      detail: {
+        startX: rect.left + rect.width / 2,
+        startY: rect.top + rect.height / 2
+      }
+    })
+  )
 }
 </script>
 
@@ -155,6 +262,88 @@ function onProductImgError(event) {
   padding: 1rem;
   display: grid;
   gap: 0.5rem;
+}
+
+.detail-body textarea {
+  width: 100%;
+  border: 1px solid #d7dde8;
+  border-radius: 10px;
+  padding: 0.5rem 0.65rem;
+  font: inherit;
+  resize: vertical;
+}
+
+.ingredient-wrap {
+  border: 1px solid #e5eaf2;
+  border-radius: 12px;
+  padding: 0.6rem 0.7rem 0.75rem;
+  display: grid;
+  gap: 0.55rem;
+  background: linear-gradient(180deg, #fafcff 0%, #ffffff 100%);
+}
+
+.ingredient-wrap legend {
+  padding: 0 0.2rem;
+  color: #475467;
+  font-size: 0.88rem;
+}
+
+.ingredient-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.ingredient-status {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.ingredient-tools {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.chip-tool {
+  border: 1px solid #d4dbe7;
+  background: #fff;
+  color: #344054;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.chip-tool:hover {
+  background: #f3f7ff;
+}
+
+.ingredient-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.ingredient-chip {
+  border: 1px solid #d6ddeb;
+  background: #fff;
+  color: #344054;
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.84rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ingredient-chip:hover {
+  border-color: #84cc16;
+}
+
+.ingredient-chip.selected {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #86efac;
 }
 
 .detail-body h2 {

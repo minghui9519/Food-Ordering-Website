@@ -14,8 +14,8 @@
     <div class="actions">
       <p class="price"><strong>${{ product.price.toFixed(2) }}</strong></p>
       <div class="buttons">
-        <RouterLink class="btn btn-secondary" :to="`/menu/${product.id}`">View</RouterLink>
-        <button class="btn btn-primary" @click.stop="$emit('add', product)">Add</button>
+        <button class="btn btn-secondary" @click.stop="$emit('select', product)">View</button>
+        <button class="btn btn-primary" @click.stop="$emit('add', product, $event)">Add</button>
       </div>
     </div>
   </article>
@@ -23,7 +23,6 @@
 
 <script setup>
 import { ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
 import { foodImageFallbackUrl } from '../data/foodImageMap'
 
 const props = defineProps({

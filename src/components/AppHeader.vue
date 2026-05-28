@@ -12,8 +12,11 @@
         <RouterLink to="/blog">Blog</RouterLink>
       </nav>
       <div class="actions">
-        <RouterLink class="cart-chip" to="/cart">
-          Cart <strong>{{ cart.totalItems }}</strong>
+        <RouterLink id="cart-chip-target" class="cart-chip" to="/cart">
+          Cart
+          <strong class="cart-badge" :class="{ active: cart.totalItems > 0 }">
+            {{ cart.totalItems }}
+          </strong>
         </RouterLink>
         <RouterLink v-if="!auth.isLoggedIn" class="btn btn-secondary" to="/login">Login</RouterLink>
         <RouterLink v-if="!auth.isLoggedIn" class="btn btn-primary" to="/register">Register</RouterLink>
@@ -95,6 +98,42 @@ const auth = useAuthStore()
   padding: 0.45rem 0.7rem;
   font-size: 0.84rem;
   background: #fff;
+}
+
+.cart-chip.cart-bump {
+  animation: cart-bump 0.26s ease;
+}
+
+.cart-badge {
+  min-width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  line-height: 1;
+  background: #eef2f7;
+  color: #1f2937;
+  transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.cart-badge.active {
+  background: #ef4444;
+  color: #fff;
+  transform: scale(1.05);
+}
+
+@keyframes cart-bump {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.09);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .avatar-link {
