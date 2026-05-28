@@ -1,5 +1,8 @@
 <template>
-  <div class="grid" v-if="product">
+  <div class="grid" v-if="loading">
+    <p class="card muted">Loading product...</p>
+  </div>
+  <div class="grid" v-else-if="product">
     <PageIntro :title="product.name" :description="product.description" />
     <section class="card detail">
       <img
@@ -21,17 +24,35 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { products } from '../data/mockData'
 import { foodImageFallbackUrl } from '../data/foodImageMap'
 import { useCartStore } from '../stores/cart'
+import { useCatalogStore } from '../stores/catalog'
 import PageIntro from '../components/PageIntro.vue'
 
 const route = useRoute()
 const cart = useCartStore()
+const catalog = useCatalogStore()
+const product = ref(null)
+const loading = ref(true)
 
-const product = computed(() => products.find((item) => item.id === Number(route.params.id)))
+async function loadProduct() {
+  loading.value = true
+  try {
+    product.value = await catalog.fetchProductById(route.params.id)
+  } catch {
+    product.value = null
+  } finally {
+    loading.value = false
+  }
+}
+
+watch(() => route.params.id, loadProduct, { immediate: false })
+
+onMounted(() => {
+  loadProduct()
+})
 
 function onProductImgError(event) {
   if (event.target.src !== foodImageFallbackUrl) {

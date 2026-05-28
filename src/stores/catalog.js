@@ -1,0 +1,39 @@
+import { defineStore } from 'pinia'
+import * as catalogApi from '../api/catalog'
+
+export const useCatalogStore = defineStore('catalog', {
+  state: () => ({
+    products: [],
+    promotions: [],
+    blogs: [],
+    loading: false,
+    error: null,
+    loaded: false
+  }),
+  actions: {
+    async fetchAll(force = false) {
+      if (this.loaded && !force) return
+      this.loading = true
+      this.error = null
+      try {
+        const [productsRes, promotionsRes, blogsRes] = await Promise.all([
+          catalogApi.fetchProducts(),
+          catalogApi.fetchPromotions(),
+          catalogApi.fetchBlogs()
+        ])
+        this.products = productsRes.data
+        this.promotions = promotionsRes.data
+        this.blogs = blogsRes.data
+        this.loaded = true
+      } catch (err) {
+        this.error = err.response?.data?.message || 'Failed to load content'
+      } finally {
+        this.loading = false
+      }
+    },
+    async fetchProductById(id) {
+      const { data } = await catalogApi.fetchProduct(id)
+      return data
+    }
+  }
+})

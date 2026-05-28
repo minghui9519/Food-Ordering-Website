@@ -9,7 +9,10 @@
       </p>
     </section>
 
-    <section class="posts">
+    <p v-if="catalog.loading" class="muted">Loading posts...</p>
+    <p v-else-if="catalog.error" class="pill pill-warm">{{ catalog.error }}</p>
+
+    <section v-else class="posts">
       <article v-for="post in posts" :key="post.id" class="card post">
         <p class="meta muted">{{ post.tag }} · {{ post.date }}</p>
         <h2>{{ post.title }}</h2>
@@ -21,32 +24,16 @@
 </template>
 
 <script setup>
+import { computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
+import { useCatalogStore } from '../stores/catalog'
 
-const posts = [
-  {
-    id: 1,
-    tag: 'Kitchen Insight',
-    date: 'May 2026',
-    title: 'How We Keep Burgers Fresh During Delivery',
-    excerpt:
-      'A quick look at packaging layers, heat retention, and timing standards used by partner kitchens.'
-  },
-  {
-    id: 2,
-    tag: 'Healthy Choice',
-    date: 'Apr 2026',
-    title: 'Balanced Lunch Picks Under 600 Calories',
-    excerpt: 'Simple combinations of wraps, salads, and soups that keep you full without feeling heavy.'
-  },
-  {
-    id: 3,
-    tag: 'Community',
-    date: 'Apr 2026',
-    title: 'Local Restaurants We Love This Month',
-    excerpt: 'Meet independent chefs and neighborhood favorites now available through FoodyHub.'
-  }
-]
+const catalog = useCatalogStore()
+const posts = computed(() => catalog.blogs)
+
+onMounted(() => {
+  catalog.fetchAll()
+})
 </script>
 
 <style scoped>

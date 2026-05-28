@@ -98,25 +98,31 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import { products } from '../data/mockData'
+import { computed, onMounted, ref } from 'vue'
 import { foodImageFallbackUrl } from '../data/foodImageMap'
 import { useCartStore } from '../stores/cart'
+import { useCatalogStore } from '../stores/catalog'
 import ProductCard from '../components/ProductCard.vue'
 
 const cart = useCartStore()
+const catalog = useCatalogStore()
 const selectedCategory = ref('All')
 const activeProduct = ref(null)
 const quantity = ref(1)
 const orderNotes = ref('')
 const selectedIngredients = ref([])
 
-const categories = [...new Set(products.map((item) => item.cuisineCategory))]
+const products = computed(() => catalog.products)
+const categories = computed(() => [...new Set(products.value.map((item) => item.cuisineCategory))])
 const filteredProducts = computed(() =>
   selectedCategory.value === 'All'
-    ? products
-    : products.filter((item) => item.cuisineCategory === selectedCategory.value)
+    ? products.value
+    : products.value.filter((item) => item.cuisineCategory === selectedCategory.value)
 )
+
+onMounted(() => {
+  catalog.fetchAll()
+})
 
 function openDetail(product) {
   activeProduct.value = product

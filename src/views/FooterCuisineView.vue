@@ -66,34 +66,40 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { products } from '../data/mockData'
 import { foodImageFallbackUrl } from '../data/foodImageMap'
 import { useCartStore } from '../stores/cart'
+import { useCatalogStore } from '../stores/catalog'
 import ProductCard from '../components/ProductCard.vue'
 
 const cart = useCartStore()
+const catalog = useCatalogStore()
 const route = useRoute()
 const activeProduct = ref(null)
 const quantity = ref(1)
-const footerCuisines = [...new Set(products.map((item) => item.footerCuisine))]
+const products = computed(() => catalog.products)
+const footerCuisines = computed(() => [...new Set(products.value.map((item) => item.footerCuisine))])
 const selectedFooterCuisine = ref('All')
 
 watch(
   () => route.query.type,
   (value) => {
     selectedFooterCuisine.value =
-      typeof value === 'string' && footerCuisines.includes(value) ? value : 'All'
+      typeof value === 'string' && footerCuisines.value.includes(value) ? value : 'All'
   },
   { immediate: true }
 )
 
 const filteredProducts = computed(() =>
   selectedFooterCuisine.value === 'All'
-    ? products
-    : products.filter((item) => item.footerCuisine === selectedFooterCuisine.value)
+    ? products.value
+    : products.value.filter((item) => item.footerCuisine === selectedFooterCuisine.value)
 )
+
+onMounted(() => {
+  catalog.fetchAll()
+})
 
 function openDetail(product) {
   activeProduct.value = product

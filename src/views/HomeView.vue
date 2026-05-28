@@ -184,12 +184,15 @@
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useRouter } from 'vue-router'
-import { products, promotions } from '../data/mockData'
 import { useCartStore } from '../stores/cart'
+import { useCatalogStore } from '../stores/catalog'
 
 const cart = useCartStore()
+const catalog = useCatalogStore()
 const router = useRouter()
-const featuredItems = computed(() => products.slice(0, 4))
+const products = computed(() => catalog.products)
+const promotions = computed(() => catalog.promotions)
+const featuredItems = computed(() => products.value.slice(0, 4))
 const isTopRowPaused = ref(false)
 const isBottomRowPaused = ref(false)
 const topOffset = ref(0)
@@ -237,17 +240,11 @@ const showPreviousMedia = () => {
   restartHeroAutoplay()
 }
 
-const promotionCards = computed(() =>
-  promotions.map((promo, index) => ({
-    ...promo,
-    image: featuredItems.value[index % featuredItems.value.length].image,
-    tagline: ['Limited time', 'Best value', 'Popular deal'][index % 3]
-  }))
-)
+const promotionCards = computed(() => promotions.value)
 
 const categoryCards = computed(() => {
   const categoryMap = new Map()
-  products.forEach((item) => {
+  products.value.forEach((item) => {
     if (!categoryMap.has(item.cuisineCategory)) {
       categoryMap.set(item.cuisineCategory, {
         name: item.cuisineCategory,
@@ -365,6 +362,7 @@ function restartHeroAutoplay() {
 }
 
 onMounted(async () => {
+  catalog.fetchAll()
   await nextTick()
   syncLoopWidths()
   previousFrameTime = 0

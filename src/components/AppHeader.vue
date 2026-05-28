@@ -18,12 +18,13 @@
             {{ cart.totalItems }}
           </strong>
         </RouterLink>
-        <RouterLink v-if="!auth.isLoggedIn" class="btn btn-secondary" to="/login">Login</RouterLink>
-        <RouterLink v-if="!auth.isLoggedIn" class="btn btn-primary" to="/register">Register</RouterLink>
+        <RouterLink v-if="!auth.isCustomerLoggedIn" class="btn btn-secondary" to="/login">Login</RouterLink>
+        <RouterLink v-if="!auth.isCustomerLoggedIn" class="btn btn-primary" to="/register">Register</RouterLink>
+        <RouterLink v-if="auth.isAdminLoggedIn" class="btn btn-secondary" to="/admin">Admin</RouterLink>
         <RouterLink class="avatar-link" to="/account" aria-label="User account">
           <span class="avatar-icon" aria-hidden="true">👤</span>
         </RouterLink>
-        <button v-if="auth.isLoggedIn" class="btn btn-secondary" @click="auth.logout">Logout</button>
+        <button v-if="auth.isCustomerLoggedIn" class="btn btn-secondary" @click="auth.logout">Logout</button>
       </div>
     </div>
   </header>

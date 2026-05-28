@@ -1,37 +1,103 @@
 # Food Ordering Website
 
-Vue 3 front-end for a food ordering and delivery experience: browse menus, manage a cart, check out, and explore promotions and content pages. Built with Vite, Vue Router, and Pinia.
+Vue 3 front-end with an Express REST API and MySQL backend. Browse menus, manage a cart, check out, and explore promotions and blog content loaded from the database. Admins manage products, promotions, blogs, and users from `/admin`.
 
 ## Features
 
-- **Home** — Hero carousel (images/video), service highlights, promotion cards, cuisine categories, and calls to action.
-- **Menu & products** — Browse dishes from mock data, product cards with images, and **product detail** pages per item.
-- **Shopping cart** — Add items, change quantities, remove lines; totals and item count in the header (`CartSummary`).
-- **Checkout** — Delivery form (name, address, phone), place order, success message, and cart cleared after submit.
-- **Auth (demo)** — **Login** and **Register** UI with Pinia `auth` store (demo user session by email).
-- **Account & dashboard** — **Account** profile area and **Dashboard** for signed-in experience.
-- **Order history** — **History** view for past orders (UI / mock flow).
-- **Promotions** — Dedicated promotions listing and links from the home page.
-- **Content & marketing** — **About**, **Blog**, and **footer cuisine** landing pages.
-- **Layout** — Shared **AppHeader** and **AppFooter** with navigation and routing; scroll-to-top on route change.
+- **Home** — Hero carousel, service highlights, promotion cards, cuisine categories (data from API).
+- **Menu & products** — Browse dishes, product detail pages, cart integration.
+- **Shopping cart** — Add items, change quantities, remove lines.
+- **Checkout** — Delivery form; saves order to MySQL (customer login required).
+- **Order history** — Expandable list of past orders with full line-item details.
+- **Auth** — Login and register with **Customer / Admin** account type; JWT session.
+- **Account** — View and edit name, phone, address.
+- **Admin console** (`/admin`) — CRUD for products, promotions, blog posts, users, and **transactions** (view orders + line items, update status).
+- **Promotions & Blog** — Public pages read from MySQL.
 
 ## Tech stack
 
-Vue 3, Vite, Vue Router, Pinia, Axios (dependency for future API use).
+- **Frontend:** Vue 3, Vite, Vue Router, Pinia, Axios
+- **Backend:** Node.js, Express, MySQL, JWT, bcrypt
+
+## Prerequisites
+
+- Node.js 18+
+- MySQL 8+ (or MariaDB) running locally
 
 ## Setup
 
+1. Copy environment file and set your MySQL password:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env`:
+
+```
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=your_mysql_password
+DB_NAME=foodyhub
+```
+
+2. Install dependencies:
+
 ```bash
 npm install
+```
+
+3. Create tables and seed data (products, promotions, blogs, default admin):
+
+```bash
+npm run db:seed
+```
+
+If you already seeded before orders were added, run:
+
+```bash
+npm run db:migrate-orders
+```
+
+Default admin account:
+
+- Email: `admin@foodyhub.com`
+- Password: `admin123`
+- Login with **Account type: Admin**
+
+4. Run API and frontend together:
+
+```bash
+npm run dev:all
+```
+
+Or in two terminals:
+
+```bash
+npm run dev:server
 npm run dev
 ```
 
-Build for production:
+- Frontend: http://localhost:5173  
+- API: http://localhost:3001/api/health
 
-```bash
-npm run build
-npm run preview
-```
+## API overview
+
+| Method | Endpoint | Access |
+|--------|----------|--------|
+| GET | `/api/products` | Public |
+| GET | `/api/promotions` | Public (active only) |
+| GET | `/api/blogs` | Public (published only) |
+| POST | `/api/auth/register` | Public |
+| POST | `/api/auth/login` | Public |
+| GET/PUT | `/api/auth/me` | Authenticated |
+| CRUD | `/api/admin/products` | Admin |
+| CRUD | `/api/admin/promotions` | Admin |
+| CRUD | `/api/admin/blogs` | Admin |
+| CRUD | `/api/admin/users` | Admin |
+| GET/PUT | `/api/admin/orders` | Admin (transactions) |
+| POST/GET | `/api/orders` | Customer (place order, history) |
 
 ## License
 

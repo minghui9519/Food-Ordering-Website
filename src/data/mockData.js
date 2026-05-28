@@ -36,7 +36,7 @@ const cuisineCatalog = [
   { cuisineCategory: 'Malaysian', categories: ['Laksa', 'Nasi', 'Wok'], image: 'https://images.unsplash.com/photo-1591814468924-caf88d1232e1?w=600' }
 ]
 
-import { getDishImageUrl, foodImageFallbackUrl } from './foodImageMap'
+import { getDishImageUrl, foodImageFallbackUrl } from './foodImageMap.js'
 
 const productNameVariants = [
   'Classic',
