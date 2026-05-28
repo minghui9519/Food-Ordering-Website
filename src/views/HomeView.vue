@@ -4,22 +4,26 @@
       <button class="hero-nav prev" @click="showPreviousMedia" aria-label="Previous hero media">‹</button>
       <button class="hero-nav next" @click="showNextMedia" aria-label="Next hero media">›</button>
       <div class="hero-media">
-        <img
-          v-if="currentHeroMedia.type === 'image'"
-          :src="currentHeroMedia.src"
-          :alt="currentHeroMedia.alt"
-        />
-        <video
-          v-else
-          :src="currentHeroMedia.src"
-          :poster="currentHeroMedia.poster"
-          autoplay
-          muted
-          loop
-          playsinline
-        >
-          Your browser does not support this video.
-        </video>
+        <Transition name="hero-fade" mode="out-in">
+          <img
+            v-if="currentHeroMedia.type === 'image'"
+            :key="`hero-image-${currentMediaIndex}`"
+            :src="currentHeroMedia.src"
+            :alt="currentHeroMedia.alt"
+          />
+          <video
+            v-else
+            :key="`hero-video-${currentMediaIndex}`"
+            :src="currentHeroMedia.src"
+            :poster="currentHeroMedia.poster"
+            autoplay
+            muted
+            loop
+            playsinline
+          >
+            Your browser does not support this video.
+          </video>
+        </Transition>
       </div>
       <div class="overlay">
         <p class="tagline">Fresh meals from trusted local kitchens</p>
@@ -77,11 +81,87 @@
         <h2>Explore by cuisine</h2>
         <p class="muted">Browse broad cuisine categories for faster and easier ordering.</p>
       </div>
-      <div class="category-grid">
-        <article class="category-card" v-for="category in categoryCards" :key="category.name">
-          <img :src="category.image" :alt="category.name" />
-          <h3>{{ category.name }}</h3>
-        </article>
+      <div
+        class="category-carousel"
+      >
+        <div class="category-rows">
+          <div
+            class="category-row"
+            @mouseenter="pauseTopRow"
+            @mouseleave="resumeTopRow"
+            @touchstart.passive="pauseTopRow"
+            @touchend="resumeTopRow"
+            @touchcancel="resumeTopRow"
+          >
+            <button
+              class="category-nav prev"
+              @click="shiftTopRow(-1)"
+              aria-label="Scroll top row left"
+            >
+              ‹
+            </button>
+            <button
+              class="category-nav next"
+              @click="shiftTopRow(1)"
+              aria-label="Scroll top row right"
+            >
+              ›
+            </button>
+            <div class="category-track" ref="topTrackRef" :style="topTrackStyle">
+              <article
+                class="category-card"
+                v-for="(category, index) in loopingTopCategoryCards"
+                :key="`top-${category.name}-${index}`"
+                role="button"
+                tabindex="0"
+                @click="goToCategoryProduct(category)"
+                @keydown.enter.prevent="goToCategoryProduct(category)"
+                @keydown.space.prevent="goToCategoryProduct(category)"
+              >
+                <img :src="category.image" :alt="category.name" />
+                <h3>{{ category.name }}</h3>
+              </article>
+            </div>
+          </div>
+          <div
+            class="category-row"
+            @mouseenter="pauseBottomRow"
+            @mouseleave="resumeBottomRow"
+            @touchstart.passive="pauseBottomRow"
+            @touchend="resumeBottomRow"
+            @touchcancel="resumeBottomRow"
+          >
+            <button
+              class="category-nav prev"
+              @click="shiftBottomRow(-1)"
+              aria-label="Scroll bottom row left"
+            >
+              ‹
+            </button>
+            <button
+              class="category-nav next"
+              @click="shiftBottomRow(1)"
+              aria-label="Scroll bottom row right"
+            >
+              ›
+            </button>
+            <div class="category-track" ref="bottomTrackRef" :style="bottomTrackStyle">
+              <article
+                class="category-card"
+                v-for="(category, index) in loopingBottomCategoryCards"
+                :key="`bottom-${category.name}-${index}`"
+                role="button"
+                tabindex="0"
+                @click="goToCategoryProduct(category)"
+                @keydown.enter.prevent="goToCategoryProduct(category)"
+                @keydown.space.prevent="goToCategoryProduct(category)"
+              >
+                <img :src="category.image" :alt="category.name" />
+                <h3>{{ category.name }}</h3>
+              </article>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -101,14 +181,30 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { products, promotions } from '../data/mockData'
 import { useCartStore } from '../stores/cart'
-import { ref } from 'vue'
 
 const cart = useCartStore()
+const router = useRouter()
 const featuredItems = computed(() => products.slice(0, 4))
+const isTopRowPaused = ref(false)
+const isBottomRowPaused = ref(false)
+const topOffset = ref(0)
+const bottomOffset = ref(0)
+const topLoopWidth = ref(1)
+const bottomLoopWidth = ref(1)
+const topTrackRef = ref(null)
+const bottomTrackRef = ref(null)
+const categorySpeed = 0.038
+const heroAutoSlideMs = 6500
+let topManualVelocity = 0
+let bottomManualVelocity = 0
+let animationFrameId = 0
+let previousFrameTime = 0
+let heroAutoplayIntervalId = 0
 
 const heroMediaItems = [
   {
@@ -133,10 +229,12 @@ const currentHeroMedia = computed(() => heroMediaItems[currentMediaIndex.value])
 
 const showNextMedia = () => {
   currentMediaIndex.value = (currentMediaIndex.value + 1) % heroMediaItems.length
+  restartHeroAutoplay()
 }
 
 const showPreviousMedia = () => {
   currentMediaIndex.value = (currentMediaIndex.value - 1 + heroMediaItems.length) % heroMediaItems.length
+  restartHeroAutoplay()
 }
 
 const promotionCards = computed(() =>
@@ -151,10 +249,134 @@ const categoryCards = computed(() => {
   const categoryMap = new Map()
   products.forEach((item) => {
     if (!categoryMap.has(item.cuisineCategory)) {
-      categoryMap.set(item.cuisineCategory, { name: item.cuisineCategory, image: item.image })
+      categoryMap.set(item.cuisineCategory, {
+        name: item.cuisineCategory,
+        image: item.image,
+        productId: item.id
+      })
     }
   })
   return Array.from(categoryMap.values())
+})
+
+const topCategoryCards = computed(() => categoryCards.value.filter((_, index) => index % 2 === 0))
+const bottomCategoryCards = computed(() => {
+  const rows = categoryCards.value.filter((_, index) => index % 2 !== 0)
+  return rows.length ? rows : topCategoryCards.value
+})
+const loopingTopCategoryCards = computed(() => [...topCategoryCards.value, ...topCategoryCards.value])
+const loopingBottomCategoryCards = computed(() => [...bottomCategoryCards.value, ...bottomCategoryCards.value])
+const topTrackStyle = computed(() => ({ transform: `translateX(-${topOffset.value}px)` }))
+const bottomTrackStyle = computed(() => ({ transform: `translateX(-${bottomOffset.value}px)` }))
+
+function pauseTopRow() {
+  isTopRowPaused.value = true
+}
+
+function resumeTopRow() {
+  isTopRowPaused.value = false
+}
+
+function pauseBottomRow() {
+  isBottomRowPaused.value = true
+}
+
+function resumeBottomRow() {
+  isBottomRowPaused.value = false
+}
+
+function goToCategoryProduct(category) {
+  if (!category?.productId) return
+  router.push({ name: 'product-detail', params: { id: category.productId } })
+}
+
+function normalizeOffset(value, loopWidth) {
+  if (loopWidth <= 0) return 0
+  return ((value % loopWidth) + loopWidth) % loopWidth
+}
+
+function getRowStep(trackRef) {
+  const track = trackRef.value
+  if (!track) return 260
+  const firstCard = track.querySelector('.category-card')
+  if (!firstCard) return 260
+  const style = window.getComputedStyle(track)
+  const gap = Number.parseFloat(style.columnGap || style.gap || '0') || 0
+  return firstCard.getBoundingClientRect().width + gap
+}
+
+function shiftTopRow(direction) {
+  const step = getRowStep(topTrackRef)
+  const arrowImpulse = Math.min(Math.max(step / 340, 0.55), 1.1)
+  topManualVelocity += direction * arrowImpulse
+}
+
+function shiftBottomRow(direction) {
+  const step = getRowStep(bottomTrackRef)
+  const arrowImpulse = Math.min(Math.max(step / 340, 0.55), 1.1)
+  bottomManualVelocity += direction * arrowImpulse
+}
+
+function syncLoopWidths() {
+  const measuredTop = topTrackRef.value?.scrollWidth ?? 2
+  const measuredBottom = bottomTrackRef.value?.scrollWidth ?? 2
+  topLoopWidth.value = Math.max(measuredTop / 2, 1)
+  bottomLoopWidth.value = Math.max(measuredBottom / 2, 1)
+  topOffset.value = normalizeOffset(topOffset.value, topLoopWidth.value)
+  bottomOffset.value = normalizeOffset(bottomOffset.value, bottomLoopWidth.value)
+}
+
+function animateCategoryRows(frameTime) {
+  if (!previousFrameTime) previousFrameTime = frameTime
+  const delta = frameTime - previousFrameTime
+  previousFrameTime = frameTime
+
+  if (!isTopRowPaused.value) {
+    topOffset.value = normalizeOffset(topOffset.value + delta * categorySpeed, topLoopWidth.value)
+  }
+  if (!isBottomRowPaused.value) {
+    bottomOffset.value = normalizeOffset(bottomOffset.value - delta * categorySpeed, bottomLoopWidth.value)
+  }
+
+  topOffset.value = normalizeOffset(topOffset.value + delta * topManualVelocity, topLoopWidth.value)
+  bottomOffset.value = normalizeOffset(bottomOffset.value + delta * bottomManualVelocity, bottomLoopWidth.value)
+  topManualVelocity *= 0.92
+  bottomManualVelocity *= 0.92
+
+  animationFrameId = window.requestAnimationFrame(animateCategoryRows)
+}
+
+function startHeroAutoplay() {
+  if (heroMediaItems.length <= 1) return
+  heroAutoplayIntervalId = window.setInterval(() => {
+    currentMediaIndex.value = (currentMediaIndex.value + 1) % heroMediaItems.length
+  }, heroAutoSlideMs)
+}
+
+function stopHeroAutoplay() {
+  if (!heroAutoplayIntervalId) return
+  window.clearInterval(heroAutoplayIntervalId)
+  heroAutoplayIntervalId = 0
+}
+
+function restartHeroAutoplay() {
+  stopHeroAutoplay()
+  startHeroAutoplay()
+}
+
+onMounted(async () => {
+  await nextTick()
+  syncLoopWidths()
+  previousFrameTime = 0
+  animationFrameId = window.requestAnimationFrame(animateCategoryRows)
+  window.addEventListener('resize', syncLoopWidths)
+  startHeroAutoplay()
+})
+
+onUnmounted(() => {
+  window.cancelAnimationFrame(animationFrameId)
+  window.removeEventListener('resize', syncLoopWidths)
+  stopHeroAutoplay()
 })
 
 const whyFoodyHub = [
@@ -201,6 +423,16 @@ const whyFoodyHub = [
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.hero-fade-enter-active,
+.hero-fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+
+.hero-fade-enter-from,
+.hero-fade-leave-to {
+  opacity: 0;
 }
 
 .hero-media::after {
@@ -414,10 +646,57 @@ const whyFoodyHub = [
   background: #fff;
 }
 
-.category-grid {
+.category-carousel {
+  border-radius: 14px;
+  position: relative;
+}
+
+.category-rows {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.9rem;
+}
+
+.category-row {
+  overflow: hidden;
+  border-radius: 14px;
+  position: relative;
+  padding: 0 2.1rem;
+}
+
+.category-track {
+  display: flex;
+  gap: 0.9rem;
+  width: max-content;
+}
+
+.category-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 999px;
+  border: 1px solid #d4dae4;
+  background: rgba(255, 255, 255, 0.95);
+  color: #101828;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.category-nav:hover {
+  background: #f3f6fb;
+}
+
+.category-nav.prev {
+  left: 0.25rem;
+}
+
+.category-nav.next {
+  right: 0.25rem;
 }
 
 .category-card {
@@ -425,6 +704,20 @@ const whyFoodyHub = [
   border-radius: 14px;
   overflow: hidden;
   background: #fff;
+  flex: 0 0 clamp(180px, 22vw, 280px);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.category-card:hover,
+.category-card:focus-visible {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.12);
+}
+
+.category-card:focus-visible {
+  outline: 2px solid #22c55e;
+  outline-offset: 2px;
 }
 
 .category-card img {
@@ -463,8 +756,7 @@ const whyFoodyHub = [
 }
 
 @media (max-width: 980px) {
-  .promo-card-grid,
-  .category-grid {
+  .promo-card-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -489,9 +781,22 @@ const whyFoodyHub = [
     margin-top: -1.2rem;
   }
 
-  .promo-card-grid,
-  .category-grid {
+  .promo-card-grid {
     grid-template-columns: 1fr;
+  }
+
+  .category-card {
+    flex-basis: clamp(160px, 58vw, 230px);
+  }
+
+  .category-nav {
+    width: 1.6rem;
+    height: 1.6rem;
+    font-size: 1.05rem;
+  }
+
+  .category-row {
+    padding: 0 1.6rem;
   }
 }
 </style>
