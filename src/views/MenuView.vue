@@ -8,13 +8,34 @@
       </section>
 
       <section class="card filter-card">
-        <label for="cuisine">Filter by cuisine</label>
-        <select id="cuisine" v-model="selectedCategory">
-          <option value="All">All</option>
-          <option v-for="category in categories" :key="category" :value="category">
-            {{ category }}
-          </option>
-        </select>
+        <div class="filter-grid">
+          <label for="menu-cuisine">
+            Filter by cuisine
+            <select id="menu-cuisine" v-model="selectedCuisine">
+              <option value="All">All cuisines</option>
+              <option v-for="cuisine in cuisineFilters" :key="cuisine" :value="cuisine">
+                {{ cuisine }}
+              </option>
+            </select>
+          </label>
+          <label for="product-category">
+            Filter by food category
+            <select id="product-category" v-model="selectedProductCategory">
+              <option value="All">All categories</option>
+              <option v-for="category in productCategories" :key="category" :value="category">
+                {{ category }}
+              </option>
+            </select>
+          </label>
+        </div>
+        <button
+          v-if="hasActiveFilters"
+          type="button"
+          class="filter-clear"
+          @click="clearFilters"
+        >
+          Clear filters
+        </button>
       </section>
 
       <section class="grid products">
@@ -98,7 +119,9 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { allProductCategories, cuisineOptions } from '../data/foodCatalog'
 import { foodImageFallbackUrl } from '../data/foodImageMap'
 import { useCartStore } from '../stores/cart'
 import { useCatalogStore } from '../stores/catalog'
@@ -106,19 +129,79 @@ import ProductCard from '../components/ProductCard.vue'
 
 const cart = useCartStore()
 const catalog = useCatalogStore()
-const selectedCategory = ref('All')
+const route = useRoute()
+const router = useRouter()
+const selectedCuisine = ref('All')
+const selectedProductCategory = ref('All')
 const activeProduct = ref(null)
 const quantity = ref(1)
 const orderNotes = ref('')
 const selectedIngredients = ref([])
 
 const products = computed(() => catalog.products)
-const categories = computed(() => [...new Set(products.value.map((item) => item.cuisineCategory))])
-const filteredProducts = computed(() =>
-  selectedCategory.value === 'All'
-    ? products.value
-    : products.value.filter((item) => item.cuisineCategory === selectedCategory.value)
+const productCategories = computed(() => allProductCategories)
+
+const cuisineFilters = computed(() => {
+  const labelsInStock = new Set(products.value.map((item) => item.cuisineCategory))
+  return cuisineOptions.map((option) => option.label).filter((label) => labelsInStock.has(label))
+})
+
+const hasActiveFilters = computed(
+  () => selectedCuisine.value !== 'All' || selectedProductCategory.value !== 'All'
 )
+
+const filteredProducts = computed(() =>
+  products.value.filter((item) => {
+    if (selectedCuisine.value !== 'All' && item.cuisineCategory !== selectedCuisine.value) {
+      return false
+    }
+    if (selectedProductCategory.value !== 'All' && item.category !== selectedProductCategory.value) {
+      return false
+    }
+    return true
+  })
+)
+
+const validCuisineLabels = cuisineOptions.map((option) => option.label)
+
+function syncFiltersFromRoute() {
+  const cuisine = typeof route.query.cuisine === 'string' ? route.query.cuisine : ''
+  const category = typeof route.query.category === 'string' ? route.query.category : ''
+
+  selectedCuisine.value =
+    cuisine && validCuisineLabels.includes(cuisine) ? cuisine : 'All'
+
+  selectedProductCategory.value =
+    category && productCategories.value.includes(category) ? category : 'All'
+}
+
+function buildMenuQuery() {
+  const query = {}
+  if (selectedCuisine.value !== 'All') query.cuisine = selectedCuisine.value
+  if (selectedProductCategory.value !== 'All') query.category = selectedProductCategory.value
+  return query
+}
+
+function clearFilters() {
+  selectedCuisine.value = 'All'
+  selectedProductCategory.value = 'All'
+  router.replace({ name: 'menu', query: {} })
+}
+
+watch(
+  () => route.query,
+  () => syncFiltersFromRoute(),
+  { immediate: true, deep: true }
+)
+
+watch([selectedCuisine, selectedProductCategory], () => {
+  const query = buildMenuQuery()
+  const currentCuisine = route.query.cuisine ?? undefined
+  const currentCategory = route.query.category ?? undefined
+  if (query.cuisine !== currentCuisine || query.category !== currentCategory) {
+    router.replace({ name: 'menu', query })
+  }
+})
 
 onMounted(() => {
   catalog.fetchAll()
@@ -240,7 +323,42 @@ function triggerCartFlyAnimation(event) {
 
 .filter-card {
   display: grid;
-  gap: 0.5rem;
+  gap: 0.75rem;
+}
+
+.filter-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.filter-grid label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #344054;
+}
+
+.filter-grid select {
+  font-weight: 400;
+}
+
+.filter-clear {
+  justify-self: start;
+  border: none;
+  background: none;
+  color: #f97316;
+  font-size: 0.88rem;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .filter-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .products {

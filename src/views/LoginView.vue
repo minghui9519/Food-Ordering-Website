@@ -19,11 +19,11 @@
       </p>
       <p class="auth-admin-link muted" v-if="auth.isAdminLoggedIn">
         Admin session: {{ auth.adminUser.email }} —
-        <RouterLink to="/admin">Open admin console</RouterLink>
+        <a href="/admin.html">Open admin console</a>
       </p>
       <p class="auth-admin-link muted">
         Administrator?
-        <RouterLink to="/admin/login">Sign in to admin portal</RouterLink>
+        <a href="/admin.html">Open admin portal</a>
       </p>
     </section>
   </div>
@@ -31,7 +31,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import PageIntro from '../components/PageIntro.vue'
 

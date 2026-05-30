@@ -1,6 +1,9 @@
 <template>
   <section class="admin-panel">
     <div class="admin-card admin-table-card">
+      <div class="admin-table-toolbar">
+        <h2>Transaction list</h2>
+      </div>
       <table class="admin-table">
         <thead>
           <tr>
@@ -13,14 +16,20 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="order in orders" :key="order.id">
+          <tr v-if="loading">
+            <td colspan="6" class="admin-empty">Loading transactions…</td>
+          </tr>
+          <tr v-else-if="!paginatedOrders.length">
+            <td colspan="6" class="admin-empty">No transactions yet.</td>
+          </tr>
+          <tr v-for="order in paginatedOrders" :key="order.id">
             <td>#{{ order.id }}</td>
             <td>
               <strong>{{ order.customerName }}</strong>
               <span class="sub">{{ order.userEmail }}</span>
             </td>
             <td>{{ formatDate(order.createdAt) }}</td>
-            <td>${{ order.total.toFixed(2) }}</td>
+            <td>${{ formatAdminPrice(order.total) }}</td>
             <td>
               <select
                 class="status-select"
@@ -33,86 +42,123 @@
               </select>
             </td>
             <td>
-              <button type="button" class="admin-btn admin-btn-ghost" @click="selectOrder(order)">
+              <button type="button" class="admin-btn admin-btn-ghost" @click="openOrderDetail(order)">
                 View details
               </button>
             </td>
           </tr>
         </tbody>
       </table>
-      <p v-if="!loading && !orders.length" class="empty">No transactions yet.</p>
+      <AdminPagination
+        label="order"
+        :total-items="orderTotalItems"
+        :current-page="orderCurrentPage"
+        :total-pages="orderTotalPages"
+        :page-numbers="orderPageNumbers"
+        :range-start="orderRangeStart"
+        :range-end="orderRangeEnd"
+        @page-change="goToOrderPage"
+      />
     </div>
 
-    <section v-if="selectedOrder" class="admin-card order-detail">
-      <div class="detail-head">
-        <h2>Order #{{ selectedOrder.id }}</h2>
-        <button type="button" class="admin-btn admin-btn-ghost" @click="selectedOrder = null">Close</button>
+    <AdminModal
+      :open="orderDetailOpen"
+      :title="selectedOrder ? `Order #${selectedOrder.id}` : 'Order details'"
+      @close="closeOrderDetail"
+    >
+      <template v-if="selectedOrder">
+        <dl class="detail-meta">
+          <div><dt>Customer</dt><dd>{{ selectedOrder.customerName }} ({{ selectedOrder.userEmail }})</dd></div>
+          <div><dt>Phone</dt><dd>{{ selectedOrder.phone }}</dd></div>
+          <div><dt>Address</dt><dd>{{ selectedOrder.deliveryAddress }}</dd></div>
+          <div><dt>Placed</dt><dd>{{ formatDate(selectedOrder.createdAt) }}</dd></div>
+          <div><dt>Status</dt><dd>{{ selectedOrder.status }}</dd></div>
+          <div><dt>Total</dt><dd>${{ formatAdminPrice(selectedOrder.total) }}</dd></div>
+        </dl>
+        <h3 class="items-title">Line items</h3>
+        <table class="admin-table items-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Qty</th>
+              <th>Unit</th>
+              <th>Line total</th>
+              <th>Customisation</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in selectedOrder.items" :key="item.id">
+              <td>{{ item.productName }}</td>
+              <td>{{ item.quantity }}</td>
+              <td>${{ formatAdminPrice(item.unitPrice) }}</td>
+              <td>${{ formatAdminPrice(item.lineTotal) }}</td>
+              <td class="custom-cell">
+                <p v-if="item.customIngredients?.length"><strong>Add:</strong> {{ item.customIngredients.join(', ') }}</p>
+                <p v-if="item.removedIngredients?.length"><strong>Remove:</strong> {{ item.removedIngredients.join(', ') }}</p>
+                <p v-if="item.notes"><strong>Notes:</strong> {{ item.notes }}</p>
+                <span v-if="!item.customIngredients?.length && !item.removedIngredients?.length && !item.notes" class="muted-inline">—</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </template>
+      <div class="modal-actions">
+        <button type="button" class="admin-btn admin-btn-ghost" @click="closeOrderDetail">Close</button>
       </div>
-      <dl class="detail-meta">
-        <div><dt>Customer</dt><dd>{{ selectedOrder.customerName }} ({{ selectedOrder.userEmail }})</dd></div>
-        <div><dt>Phone</dt><dd>{{ selectedOrder.phone }}</dd></div>
-        <div><dt>Address</dt><dd>{{ selectedOrder.deliveryAddress }}</dd></div>
-        <div><dt>Placed</dt><dd>{{ formatDate(selectedOrder.createdAt) }}</dd></div>
-        <div><dt>Status</dt><dd>{{ selectedOrder.status }}</dd></div>
-        <div><dt>Total</dt><dd>${{ selectedOrder.total.toFixed(2) }}</dd></div>
-      </dl>
-      <h3>Line items</h3>
-      <table class="admin-table items-table">
-        <thead>
-          <tr>
-            <th>Product</th>
-            <th>Qty</th>
-            <th>Unit</th>
-            <th>Line total</th>
-            <th>Customisation</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="item in selectedOrder.items" :key="item.id">
-            <td>{{ item.productName }}</td>
-            <td>{{ item.quantity }}</td>
-            <td>${{ item.unitPrice.toFixed(2) }}</td>
-            <td>${{ item.lineTotal.toFixed(2) }}</td>
-            <td class="custom-cell">
-              <p v-if="item.customIngredients?.length"><strong>Add:</strong> {{ item.customIngredients.join(', ') }}</p>
-              <p v-if="item.removedIngredients?.length"><strong>Remove:</strong> {{ item.removedIngredients.join(', ') }}</p>
-              <p v-if="item.notes"><strong>Notes:</strong> {{ item.notes }}</p>
-              <span v-if="!item.customIngredients?.length && !item.removedIngredients?.length && !item.notes" class="muted-inline">—</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+    </AdminModal>
   </section>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { adminOrders } from '../../api/admin'
+import AdminModal from './AdminModal.vue'
+import AdminPagination from './AdminPagination.vue'
+import { formatAdminPrice, useAdminPagination } from '../../composables/useAdminPagination'
 
 const orders = ref([])
 const selectedOrder = ref(null)
+const orderDetailOpen = ref(false)
 const loading = ref(false)
+
+const {
+  paginatedItems: paginatedOrders,
+  totalItems: orderTotalItems,
+  currentPage: orderCurrentPage,
+  totalPages: orderTotalPages,
+  pageNumbers: orderPageNumbers,
+  rangeStart: orderRangeStart,
+  rangeEnd: orderRangeEnd,
+  goToPage: goToOrderPage,
+  resetPage: resetOrderPage
+} = useAdminPagination(orders)
 
 function formatDate(value) {
   if (!value) return '—'
   return new Date(value).toLocaleString()
 }
 
+function openOrderDetail(order) {
+  selectedOrder.value = order
+  orderDetailOpen.value = true
+}
+
+function closeOrderDetail() {
+  orderDetailOpen.value = false
+  selectedOrder.value = null
+}
+
 async function loadOrders() {
   loading.value = true
   try {
     const { data } = await adminOrders.list()
-    orders.value = data
+    orders.value = data ?? []
+    resetOrderPage()
   } catch (err) {
     console.error(err)
   } finally {
     loading.value = false
   }
-}
-
-function selectOrder(order) {
-  selectedOrder.value = order
 }
 
 async function updateStatus(id, status) {
@@ -130,9 +176,29 @@ async function updateStatus(id, status) {
 onMounted(() => {
   loadOrders()
 })
+
+onUnmounted(() => {
+  closeOrderDetail()
+})
 </script>
 
 <style scoped>
+.admin-table-toolbar {
+  padding: 1rem 1.15rem 0;
+}
+
+.admin-table-toolbar h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #f1f5f9;
+}
+
+.admin-empty {
+  text-align: center;
+  color: #94a3b8;
+  padding: 1.25rem !important;
+}
+
 .sub {
   display: block;
   font-size: 0.78rem;
@@ -147,31 +213,6 @@ onMounted(() => {
   background: #0b1220;
   color: #e2e8f0;
   font-size: 0.85rem;
-}
-
-.empty {
-  padding: 1rem;
-  margin: 0;
-  color: #94a3b8;
-  font-size: 0.9rem;
-}
-
-.order-detail {
-  margin-top: 0.25rem;
-}
-
-.detail-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.detail-head h2 {
-  margin: 0;
-  font-size: 1.1rem;
-  color: #f1f5f9;
 }
 
 .detail-meta {
@@ -193,10 +234,14 @@ onMounted(() => {
   color: #f1f5f9;
 }
 
-.order-detail h3 {
+.items-title {
   margin: 0 0 0.65rem;
   font-size: 0.95rem;
   color: #cbd5e1;
+}
+
+.items-table {
+  margin-bottom: 1rem;
 }
 
 .custom-cell p {
@@ -207,6 +252,12 @@ onMounted(() => {
 
 .muted-inline {
   color: #64748b;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
 }
 
 @media (max-width: 768px) {

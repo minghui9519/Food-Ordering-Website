@@ -1,6 +1,14 @@
 import { Router } from 'express'
 import bcrypt from 'bcryptjs'
 import { query } from '../db.js'
+import {
+  filterCatalogProducts,
+  isValidCatalogProduct
+} from '../utils/catalogProducts.js'
+import {
+  normalizeProductImageUrl,
+  productImageUrlErrorMessage
+} from '../../src/utils/productImageUrl.js'
 import { mapBlog, mapOrder, mapProduct, mapPromotion, mapUser } from '../utils/mappers.js'
 import { requireAuth, requireAdmin } from '../middleware/auth.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
@@ -11,18 +19,32 @@ router.use(requireAuth, requireAdmin)
 // —— Products ——
 router.get('/products', async (_req, res) => {
   const rows = await query('SELECT * FROM products ORDER BY id ASC')
-  res.json(rows.map(mapProduct))
+  res.json(filterCatalogProducts(rows.map(mapProduct)))
 })
+
+function validateImageField(image) {
+  const message = productImageUrlErrorMessage(image)
+  if (message) return message
+  return null
+}
 
 router.post('/products', async (req, res) => {
   const { name, description, price, category, cuisineCategory, footerCuisine, image } = req.body
-  if (!name || !description || price == null || !category || !cuisineCategory || !footerCuisine || !image) {
+  const imageUrl = normalizeProductImageUrl(image)
+  if (!name || !description || price == null || !category || !cuisineCategory || !footerCuisine || !imageUrl) {
     return res.status(400).json({ message: 'All product fields are required' })
+  }
+  const imageError = validateImageField(imageUrl)
+  if (imageError) return res.status(400).json({ message: imageError })
+  if (!isValidCatalogProduct({ category, cuisineCategory, footerCuisine })) {
+    return res.status(400).json({
+      message: 'Food category and cuisine must match the catalog and a popular cuisine group'
+    })
   }
   const result = await query(
     `INSERT INTO products (name, description, price, category, cuisine_category, footer_cuisine, image)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [name, description, Number(price), category, cuisineCategory, footerCuisine, image]
+    [name, description, Number(price), category, cuisineCategory, footerCuisine, imageUrl]
   )
   const rows = await query('SELECT * FROM products WHERE id = ?', [result.insertId])
   res.status(201).json(mapProduct(rows[0]))
@@ -30,12 +52,20 @@ router.post('/products', async (req, res) => {
 
 router.put('/products/:id', async (req, res) => {
   const { name, description, price, category, cuisineCategory, footerCuisine, image } = req.body
+  const imageUrl = normalizeProductImageUrl(image)
   const existing = await query('SELECT id FROM products WHERE id = ?', [req.params.id])
   if (!existing.length) return res.status(404).json({ message: 'Product not found' })
+  const imageError = validateImageField(imageUrl)
+  if (imageError) return res.status(400).json({ message: imageError })
+  if (!isValidCatalogProduct({ category, cuisineCategory, footerCuisine })) {
+    return res.status(400).json({
+      message: 'Food category and cuisine must match the catalog and a popular cuisine group'
+    })
+  }
   await query(
     `UPDATE products SET name = ?, description = ?, price = ?, category = ?,
      cuisine_category = ?, footer_cuisine = ?, image = ? WHERE id = ?`,
-    [name, description, Number(price), category, cuisineCategory, footerCuisine, image, req.params.id]
+    [name, description, Number(price), category, cuisineCategory, footerCuisine, imageUrl, req.params.id]
   )
   const rows = await query('SELECT * FROM products WHERE id = ?', [req.params.id])
   res.json(mapProduct(rows[0]))
@@ -55,13 +85,16 @@ router.get('/promotions', async (_req, res) => {
 
 router.post('/promotions', async (req, res) => {
   const { title, detail, tagline, image, isActive = true } = req.body
-  if (!title || !detail || !image) {
+  const imageUrl = normalizeProductImageUrl(image)
+  if (!title || !detail || !imageUrl) {
     return res.status(400).json({ message: 'Title, detail, and image are required' })
   }
+  const imageError = validateImageField(imageUrl)
+  if (imageError) return res.status(400).json({ message: imageError })
   const result = await query(
     `INSERT INTO promotions (title, detail, tagline, image, is_active)
      VALUES (?, ?, ?, ?, ?)`,
-    [title, detail, tagline || 'Limited time', image, isActive ? 1 : 0]
+    [title, detail, tagline || 'Limited time', imageUrl, isActive ? 1 : 0]
   )
   const rows = await query('SELECT * FROM promotions WHERE id = ?', [result.insertId])
   res.status(201).json(mapPromotion(rows[0]))
@@ -69,11 +102,14 @@ router.post('/promotions', async (req, res) => {
 
 router.put('/promotions/:id', async (req, res) => {
   const { title, detail, tagline, image, isActive } = req.body
+  const imageUrl = normalizeProductImageUrl(image)
   const existing = await query('SELECT id FROM promotions WHERE id = ?', [req.params.id])
   if (!existing.length) return res.status(404).json({ message: 'Promotion not found' })
+  const imageError = validateImageField(imageUrl)
+  if (imageError) return res.status(400).json({ message: imageError })
   await query(
     `UPDATE promotions SET title = ?, detail = ?, tagline = ?, image = ?, is_active = ? WHERE id = ?`,
-    [title, detail, tagline || 'Limited time', image, isActive ? 1 : 0, req.params.id]
+    [title, detail, tagline || 'Limited time', imageUrl, isActive ? 1 : 0, req.params.id]
   )
   const rows = await query('SELECT * FROM promotions WHERE id = ?', [req.params.id])
   res.json(mapPromotion(rows[0]))

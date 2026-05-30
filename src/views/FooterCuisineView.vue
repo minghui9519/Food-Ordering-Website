@@ -3,15 +3,15 @@
     <section class="menu-content grid">
       <section class="card menu-hero">
         <p class="pill pill-warm">Cuisine Directory</p>
-        <h1 class="section-title">Explore dishes grouped by footer cuisine.</h1>
-        <p class="muted">Use this page to browse cuisine families without going to the menu page.</p>
+        <h1 class="section-title">Explore dishes by popular cuisine.</h1>
+        <p class="muted">Browse all dishes that belong to each popular cuisine group.</p>
       </section>
 
       <section class="card filter-card">
-        <label for="footer-cuisine">Filter by footer cuisine</label>
-        <select id="footer-cuisine" v-model="selectedFooterCuisine">
+        <label for="popular-cuisine">Popular cuisine</label>
+        <select id="popular-cuisine" v-model="selectedFooterCuisine">
           <option value="All">All</option>
-          <option v-for="cuisine in footerCuisines" :key="cuisine" :value="cuisine">
+          <option v-for="cuisine in popularCuisineOptions" :key="cuisine" :value="cuisine">
             {{ cuisine }}
           </option>
         </select>
@@ -68,6 +68,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { popularCuisines } from '../data/foodCatalog'
 import { foodImageFallbackUrl } from '../data/foodImageMap'
 import { useCartStore } from '../stores/cart'
 import { useCatalogStore } from '../stores/catalog'
@@ -79,14 +80,14 @@ const route = useRoute()
 const activeProduct = ref(null)
 const quantity = ref(1)
 const products = computed(() => catalog.products)
-const footerCuisines = computed(() => [...new Set(products.value.map((item) => item.footerCuisine))])
+const popularCuisineOptions = computed(() => popularCuisines)
 const selectedFooterCuisine = ref('All')
 
 watch(
   () => route.query.type,
   (value) => {
     selectedFooterCuisine.value =
-      typeof value === 'string' && footerCuisines.value.includes(value) ? value : 'All'
+      typeof value === 'string' && popularCuisineOptions.value.includes(value) ? value : 'All'
   },
   { immediate: true }
 )

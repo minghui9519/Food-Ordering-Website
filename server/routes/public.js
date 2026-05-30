@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { query } from '../db.js'
+import { filterCatalogProducts, isValidCatalogProduct } from '../utils/catalogProducts.js'
 import { mapBlog, mapProduct, mapPromotion } from '../utils/mappers.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
 
@@ -9,7 +10,7 @@ router.get(
   '/products',
   asyncHandler(async (_req, res) => {
     const rows = await query('SELECT * FROM products ORDER BY id ASC')
-    res.json(rows.map(mapProduct))
+    res.json(filterCatalogProducts(rows.map(mapProduct)))
   })
 )
 
@@ -18,7 +19,11 @@ router.get(
   asyncHandler(async (req, res) => {
     const rows = await query('SELECT * FROM products WHERE id = ?', [req.params.id])
     if (!rows.length) return res.status(404).json({ message: 'Product not found' })
-    res.json(mapProduct(rows[0]))
+    const product = mapProduct(rows[0])
+    if (!isValidCatalogProduct(product)) {
+      return res.status(404).json({ message: 'Product not found' })
+    }
+    res.json(product)
   })
 )
 

@@ -20,7 +20,7 @@
         </p>
         <p v-if="auth.isAdminLoggedIn" class="admin-auth-notice">
           Already signed in as admin ({{ auth.adminUser.email }}).
-          <RouterLink to="/admin">Go to admin console</RouterLink>
+          <RouterLink :to="{ name: 'admin' }">Go to admin console</RouterLink>
         </p>
         <p v-if="error" class="admin-auth-error">{{ error }}</p>
         <button class="admin-submit" type="submit" :disabled="submitting">
@@ -29,7 +29,7 @@
       </form>
       <p class="admin-auth-footer">
         Customer?
-        <RouterLink to="/login">Go to customer login</RouterLink>
+        <a href="/login">Go to customer login</a>
       </p>
     </div>
   </div>
@@ -58,7 +58,13 @@ async function onLogin() {
       role: 'admin'
     })
     const redirect = route.query.redirect
-    router.push(typeof redirect === 'string' && redirect.startsWith('/admin') ? redirect : '/admin')
+    if (typeof redirect === 'string' && redirect.startsWith('/admin')) {
+      router.push({ name: 'admin' })
+    } else if (typeof redirect === 'string' && redirect.startsWith('/')) {
+      router.push(redirect)
+    } else {
+      router.push({ name: 'admin' })
+    }
   } catch (err) {
     error.value = err.response?.data?.message || 'Login failed'
   } finally {

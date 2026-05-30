@@ -24,6 +24,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { foodImageFallbackUrl } from '../data/foodImageMap'
+import { resolveProductImageUrl } from '../utils/productImageUrl'
 
 const props = defineProps({
   product: { type: Object, required: true }
@@ -31,12 +32,12 @@ const props = defineProps({
 
 defineEmits(['add', 'select'])
 
-const displaySrc = ref(props.product.image)
+const displaySrc = ref(resolveProductImageUrl(props.product.image))
 
 watch(
   () => props.product.image,
   (url) => {
-    displaySrc.value = url
+    displaySrc.value = resolveProductImageUrl(url)
   }
 )
 

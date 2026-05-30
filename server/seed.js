@@ -6,6 +6,8 @@ import { fileURLToPath } from 'url'
 import { config } from './config.js'
 import { products, promotions } from '../src/data/mockData.js'
 import { foodImageFallbackUrl } from '../src/data/foodImageMap.js'
+import { isValidCatalogProduct } from '../src/data/foodCatalog.js'
+import { mapProduct } from './utils/mappers.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -77,6 +79,18 @@ async function run() {
       )
     }
     console.log(`Seeded ${products.length} products`)
+  }
+
+  const [allProducts] = await conn.query('SELECT * FROM products')
+  let removedInvalid = 0
+  for (const row of allProducts) {
+    if (!isValidCatalogProduct(mapProduct(row))) {
+      await conn.execute('DELETE FROM products WHERE id = ?', [row.id])
+      removedInvalid += 1
+    }
+  }
+  if (removedInvalid > 0) {
+    console.log(`Removed ${removedInvalid} product(s) that did not match the catalog`)
   }
 
   const [promoCount] = await conn.query('SELECT COUNT(*) AS count FROM promotions')

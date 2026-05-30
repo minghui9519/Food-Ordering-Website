@@ -9,6 +9,7 @@
     "dev:server": "node server/index.js",
     "dev:all": "npm run dev",
     "db:seed": "node server/seed.js",
+    "db:migrate-image": "node server/migrate-image-column.js",
     "db:migrate-orders": "node server/migrate-orders.js",
     "build": "vite build",
     "preview": "vite preview"

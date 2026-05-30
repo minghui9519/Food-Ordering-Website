@@ -1,3 +1,5 @@
+import { normalizeProductImageUrl, resolveProductImageUrl } from '../../src/utils/productImageUrl.js'
+
 export function mapUser(row) {
   if (!row) return null
   return {
@@ -16,11 +18,11 @@ export function mapProduct(row) {
     id: row.id,
     name: row.name,
     description: row.description,
-    price: Number(row.price),
+    price: Number(row.price) || 0,
     category: row.category,
     cuisineCategory: row.cuisine_category,
     footerCuisine: row.footer_cuisine,
-    image: row.image
+    image: resolveProductImageUrl(row.image)
   }
 }
 
@@ -31,7 +33,7 @@ export function mapPromotion(row) {
     title: row.title,
     detail: row.detail,
     tagline: row.tagline ?? 'Limited time',
-    image: row.image,
+    image: resolveProductImageUrl(row.image),
     isActive: Boolean(row.is_active)
   }
 }

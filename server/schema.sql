@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS products (
   category VARCHAR(80) NOT NULL,
   cuisine_category VARCHAR(80) NOT NULL,
   footer_cuisine VARCHAR(80) NOT NULL,
-  image VARCHAR(500) NOT NULL,
+  image VARCHAR(2048) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS promotions (
   title VARCHAR(200) NOT NULL,
   detail TEXT NOT NULL,
   tagline VARCHAR(120) DEFAULT 'Limited time',
-  image VARCHAR(500) NOT NULL,
+  image VARCHAR(2048) NOT NULL,
   is_active TINYINT(1) NOT NULL DEFAULT 1,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

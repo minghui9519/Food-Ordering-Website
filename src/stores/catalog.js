@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import * as catalogApi from '../api/catalog'
+import { filterCatalogProducts, isValidCatalogProduct } from '../data/foodCatalog'
 
 export const useCatalogStore = defineStore('catalog', {
   state: () => ({
@@ -21,7 +22,7 @@ export const useCatalogStore = defineStore('catalog', {
           catalogApi.fetchPromotions(),
           catalogApi.fetchBlogs()
         ])
-        this.products = productsRes.data
+        this.products = filterCatalogProducts(productsRes.data)
         this.promotions = promotionsRes.data
         this.blogs = blogsRes.data
         this.loaded = true
@@ -33,7 +34,7 @@ export const useCatalogStore = defineStore('catalog', {
     },
     async fetchProductById(id) {
       const { data } = await catalogApi.fetchProduct(id)
-      return data
+      return isValidCatalogProduct(data) ? data : null
     }
   }
 })

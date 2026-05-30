@@ -79,8 +79,11 @@ npm run dev:server
 npm run dev
 ```
 
-- Frontend: http://localhost:5173  
+- Frontend (customer): http://localhost:5173  
+- Admin portal (separate session): http://localhost:5173/admin.html  
 - API: http://localhost:3001/api/health
+
+When you run `npm run dev`, both URLs are printed in the terminal. The admin portal uses its own login page and keeps a separate admin session, so you can stay signed in as a customer on the main site while managing the store in admin.
 
 ## API overview
 

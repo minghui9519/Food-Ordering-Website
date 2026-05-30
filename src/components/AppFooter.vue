@@ -8,7 +8,7 @@
       </div>
 
       <div class="link-column">
-        <h3>Product</h3>
+        <h3>Popular Products</h3>
         <RouterLink v-for="item in productLinks" :key="item.label" :to="item.to">
           {{ item.label }}
         </RouterLink>
@@ -33,23 +33,21 @@
 <script setup>
 import { RouterLink } from 'vue-router'
 
+import { popularCuisines } from '../data/foodCatalog'
+
 const productLinks = [
-  { label: 'Classic Burger', to: '/menu' },
-  { label: 'Chicken Wrap', to: '/menu' },
-  { label: 'Margherita Pizza', to: '/menu' },
-  { label: 'Pasta Alfredo', to: '/menu' },
-  { label: 'Caesar Salad', to: '/menu' },
-  { label: 'Fries Basket', to: '/menu' }
+  { label: 'Burgers', to: '/menu?category=Burger' },
+  { label: 'Wraps', to: '/menu?category=Wrap' },
+  { label: 'Pizza', to: '/menu?category=Pizza' },
+  { label: 'Pasta', to: '/menu?category=Pasta' },
+  { label: 'Salads', to: '/menu?category=Salad' },
+  { label: 'Tacos', to: '/menu?category=Taco' }
 ]
 
-const cuisineLinks = [
-  { label: 'American', to: '/footer-cuisines?type=American' },
-  { label: 'Italian', to: '/footer-cuisines?type=Italian' },
-  { label: 'Mexican', to: '/footer-cuisines?type=Mexican' },
-  { label: 'Korean', to: '/footer-cuisines?type=Korean' },
-  { label: 'Japanese', to: '/footer-cuisines?type=Japanese' },
-  { label: 'Thai', to: '/footer-cuisines?type=Thai' }
-]
+const cuisineLinks = popularCuisines.map((label) => ({
+  label,
+  to: `/footer-cuisines?type=${encodeURIComponent(label)}`
+}))
 </script>
 
 <style scoped>

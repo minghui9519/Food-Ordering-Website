@@ -184,6 +184,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useRouter } from 'vue-router'
+import { cuisineOptions } from '../data/foodCatalog'
 import { useCartStore } from '../stores/cart'
 import { useCatalogStore } from '../stores/catalog'
 
@@ -243,17 +244,20 @@ const showPreviousMedia = () => {
 const promotionCards = computed(() => promotions.value)
 
 const categoryCards = computed(() => {
-  const categoryMap = new Map()
+  const imageByCuisine = new Map()
+  const cuisinesWithProducts = new Set()
   products.value.forEach((item) => {
-    if (!categoryMap.has(item.cuisineCategory)) {
-      categoryMap.set(item.cuisineCategory, {
-        name: item.cuisineCategory,
-        image: item.image,
-        productId: item.id
-      })
+    cuisinesWithProducts.add(item.cuisineCategory)
+    if (!imageByCuisine.has(item.cuisineCategory)) {
+      imageByCuisine.set(item.cuisineCategory, item.image)
     }
   })
-  return Array.from(categoryMap.values())
+  return cuisineOptions
+    .filter((option) => cuisinesWithProducts.has(option.label))
+    .map((option) => ({
+      name: option.label,
+      image: imageByCuisine.get(option.label) ?? option.image
+    }))
 })
 
 const topCategoryCards = computed(() => categoryCards.value.filter((_, index) => index % 2 === 0))
@@ -283,8 +287,8 @@ function resumeBottomRow() {
 }
 
 function goToCategoryProduct(category) {
-  if (!category?.productId) return
-  router.push({ name: 'product-detail', params: { id: category.productId } })
+  if (!category?.name) return
+  router.push({ name: 'menu', query: { cuisine: category.name } })
 }
 
 function normalizeOffset(value, loopWidth) {

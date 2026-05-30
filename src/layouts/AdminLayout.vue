@@ -69,14 +69,14 @@ watch(
 
 function setTab(tabId) {
   activeTab.value = tabId
-  router.replace({ path: '/admin', query: { tab: tabId } })
+  router.replace({ name: 'admin', query: { tab: tabId } })
 }
 
 provide('adminTab', activeTab)
 
 function logout() {
   auth.logoutAdmin()
-  router.push('/admin/login')
+  router.push({ name: 'admin-login' })
 }
 
 onMounted(() => {
@@ -303,5 +303,39 @@ html.admin-mode .admin-btn-danger {
 
 html.admin-mode .admin-btn-danger:hover {
   background: #991b1b;
+}
+
+html.admin-mode .admin-card {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+}
+
+html.admin-mode .admin-table-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+html.admin-mode .admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+html.admin-mode .admin-table th {
+  text-align: left;
+  padding: 0.65rem 0.85rem;
+  background: #1e293b;
+  color: #94a3b8;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+html.admin-mode .admin-table td {
+  padding: 0.65rem 0.85rem;
+  border-top: 1px solid #1e293b;
+  color: #e2e8f0;
 }
 </style>
