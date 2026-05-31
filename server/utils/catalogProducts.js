@@ -1,6 +1,7 @@
 import {
   filterCatalogProducts,
-  isValidCatalogProduct
+  isValidCatalogProduct,
+  allProductCategories
 } from '../../src/data/foodCatalog.js'
 
-export { filterCatalogProducts, isValidCatalogProduct }
+export { filterCatalogProducts, isValidCatalogProduct, allProductCategories }

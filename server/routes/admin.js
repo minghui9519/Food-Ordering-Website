@@ -1,10 +1,16 @@
 import { Router } from 'express'
 import bcrypt from 'bcryptjs'
-import { query } from '../db.js'
+import { query, execute } from '../db.js'
 import {
   filterCatalogProducts,
-  isValidCatalogProduct
+  isValidCatalogProduct,
+  allProductCategories
 } from '../utils/catalogProducts.js'
+import {
+  normalizeLinkUrl,
+  normalizeReadMoreLinkForSave,
+  readMoreLinkErrorMessage
+} from '../../src/utils/linkUrl.js'
 import {
   normalizeProductImageUrl,
   productImageUrlErrorMessage
@@ -28,9 +34,28 @@ function validateImageField(image) {
   return null
 }
 
+function normalizeCustomizationOptions(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean)
+  }
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const parsed = JSON.parse(value)
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => String(item).trim()).filter(Boolean)
+      }
+    } catch {
+      return []
+    }
+  }
+  return []
+}
+
 router.post('/products', async (req, res) => {
-  const { name, description, price, category, cuisineCategory, footerCuisine, image } = req.body
+  const { name, description, price, category, cuisineCategory, footerCuisine, image, customizationOptions } =
+    req.body
   const imageUrl = normalizeProductImageUrl(image)
+  const options = normalizeCustomizationOptions(customizationOptions)
   if (!name || !description || price == null || !category || !cuisineCategory || !footerCuisine || !imageUrl) {
     return res.status(400).json({ message: 'All product fields are required' })
   }
@@ -41,18 +66,29 @@ router.post('/products', async (req, res) => {
       message: 'Food category and cuisine must match the catalog and a popular cuisine group'
     })
   }
-  const result = await query(
-    `INSERT INTO products (name, description, price, category, cuisine_category, footer_cuisine, image)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [name, description, Number(price), category, cuisineCategory, footerCuisine, imageUrl]
+  const result = await execute(
+    `INSERT INTO products (name, description, price, category, cuisine_category, footer_cuisine, image, customization_options)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      name,
+      description,
+      Number(price),
+      category,
+      cuisineCategory,
+      footerCuisine,
+      imageUrl,
+      JSON.stringify(options)
+    ]
   )
   const rows = await query('SELECT * FROM products WHERE id = ?', [result.insertId])
   res.status(201).json(mapProduct(rows[0]))
 })
 
 router.put('/products/:id', async (req, res) => {
-  const { name, description, price, category, cuisineCategory, footerCuisine, image } = req.body
+  const { name, description, price, category, cuisineCategory, footerCuisine, image, customizationOptions } =
+    req.body
   const imageUrl = normalizeProductImageUrl(image)
+  const options = normalizeCustomizationOptions(customizationOptions)
   const existing = await query('SELECT id FROM products WHERE id = ?', [req.params.id])
   if (!existing.length) return res.status(404).json({ message: 'Product not found' })
   const imageError = validateImageField(imageUrl)
@@ -64,8 +100,18 @@ router.put('/products/:id', async (req, res) => {
   }
   await query(
     `UPDATE products SET name = ?, description = ?, price = ?, category = ?,
-     cuisine_category = ?, footer_cuisine = ?, image = ? WHERE id = ?`,
-    [name, description, Number(price), category, cuisineCategory, footerCuisine, imageUrl, req.params.id]
+     cuisine_category = ?, footer_cuisine = ?, image = ?, customization_options = ? WHERE id = ?`,
+    [
+      name,
+      description,
+      Number(price),
+      category,
+      cuisineCategory,
+      footerCuisine,
+      imageUrl,
+      JSON.stringify(options),
+      req.params.id
+    ]
   )
   const rows = await query('SELECT * FROM products WHERE id = ?', [req.params.id])
   res.json(mapProduct(rows[0]))
@@ -78,12 +124,62 @@ router.delete('/products/:id', async (req, res) => {
 })
 
 // —— Promotions ——
-router.get('/promotions', async (_req, res) => {
+const PROMO_TYPES = new Set(['percent', 'bogo', 'freebie'])
+
+function normalizeTargetCategories(value) {
+  if (!Array.isArray(value)) return []
+  return [...new Set(value.map((item) => String(item).trim()).filter(Boolean))]
+}
+
+function normalizeTriggerProductId(value) {
+  if (value == null || value === '') return null
+  const id = Number(value)
+  return Number.isInteger(id) && id > 0 ? id : null
+}
+
+function validatePromotionPayload(body) {
+  const promoType = PROMO_TYPES.has(body.promoType) ? body.promoType : 'percent'
+  const discountValue = Number(body.discountValue) || 0
+  const targetCategories = normalizeTargetCategories(body.targetCategories)
+  const triggerProductId = normalizeTriggerProductId(body.triggerProductId)
+  const freeItemLabel = String(body.freeItemLabel ?? '').trim()
+
+  if (promoType === 'percent' || promoType === 'bogo') {
+    if (discountValue <= 0 || discountValue > 100) {
+      return { error: 'Discount must be between 1 and 100 percent' }
+    }
+    if (targetCategories.length && !targetCategories.includes('All')) {
+      const invalid = targetCategories.filter((cat) => !allProductCategories.includes(cat))
+      if (invalid.length) {
+        return { error: `Invalid food categories: ${invalid.join(', ')}` }
+      }
+    }
+  }
+
+  if (promoType === 'freebie') {
+    if (!triggerProductId) {
+      return { error: 'Select the product that triggers this freebie' }
+    }
+    if (!freeItemLabel) {
+      return { error: 'Describe the free item (e.g. drink, fries)' }
+    }
+  }
+
+  return {
+    promoType,
+    discountValue: promoType === 'freebie' ? 0 : discountValue,
+    targetCategories: promoType === 'freebie' ? [] : targetCategories,
+    triggerProductId: promoType === 'freebie' ? triggerProductId : null,
+    freeItemLabel: promoType === 'freebie' ? freeItemLabel : null
+  }
+}
+
+router.get('/promotions', asyncHandler(async (_req, res) => {
   const rows = await query('SELECT * FROM promotions ORDER BY id ASC')
   res.json(rows.map(mapPromotion))
-})
+}))
 
-router.post('/promotions', async (req, res) => {
+router.post('/promotions', asyncHandler(async (req, res) => {
   const { title, detail, tagline, image, isActive = true } = req.body
   const imageUrl = normalizeProductImageUrl(image)
   if (!title || !detail || !imageUrl) {
@@ -91,73 +187,157 @@ router.post('/promotions', async (req, res) => {
   }
   const imageError = validateImageField(imageUrl)
   if (imageError) return res.status(400).json({ message: imageError })
+
+  const promoFields = validatePromotionPayload(req.body)
+  if (promoFields.error) return res.status(400).json({ message: promoFields.error })
+
+  if (promoFields.triggerProductId) {
+    const productRows = await query('SELECT id FROM products WHERE id = ?', [promoFields.triggerProductId])
+    if (!productRows.length) {
+      return res.status(400).json({ message: 'Trigger product not found' })
+    }
+  }
+
   const result = await query(
-    `INSERT INTO promotions (title, detail, tagline, image, is_active)
-     VALUES (?, ?, ?, ?, ?)`,
-    [title, detail, tagline || 'Limited time', imageUrl, isActive ? 1 : 0]
+    `INSERT INTO promotions
+     (title, detail, tagline, image, promo_type, discount_value, target_categories, trigger_product_id, free_item_label, is_active)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      title,
+      detail,
+      tagline || 'Limited time',
+      imageUrl,
+      promoFields.promoType,
+      promoFields.discountValue,
+      JSON.stringify(promoFields.targetCategories),
+      promoFields.triggerProductId,
+      promoFields.freeItemLabel,
+      isActive ? 1 : 0
+    ]
   )
   const rows = await query('SELECT * FROM promotions WHERE id = ?', [result.insertId])
   res.status(201).json(mapPromotion(rows[0]))
-})
+}))
 
-router.put('/promotions/:id', async (req, res) => {
+router.put('/promotions/:id', asyncHandler(async (req, res) => {
   const { title, detail, tagline, image, isActive } = req.body
   const imageUrl = normalizeProductImageUrl(image)
   const existing = await query('SELECT id FROM promotions WHERE id = ?', [req.params.id])
   if (!existing.length) return res.status(404).json({ message: 'Promotion not found' })
   const imageError = validateImageField(imageUrl)
   if (imageError) return res.status(400).json({ message: imageError })
+
+  const promoFields = validatePromotionPayload(req.body)
+  if (promoFields.error) return res.status(400).json({ message: promoFields.error })
+
+  if (promoFields.triggerProductId) {
+    const productRows = await query('SELECT id FROM products WHERE id = ?', [promoFields.triggerProductId])
+    if (!productRows.length) {
+      return res.status(400).json({ message: 'Trigger product not found' })
+    }
+  }
+
   await query(
-    `UPDATE promotions SET title = ?, detail = ?, tagline = ?, image = ?, is_active = ? WHERE id = ?`,
-    [title, detail, tagline || 'Limited time', imageUrl, isActive ? 1 : 0, req.params.id]
+    `UPDATE promotions SET title = ?, detail = ?, tagline = ?, image = ?,
+     promo_type = ?, discount_value = ?, target_categories = ?, trigger_product_id = ?, free_item_label = ?, is_active = ?
+     WHERE id = ?`,
+    [
+      title,
+      detail,
+      tagline || 'Limited time',
+      imageUrl,
+      promoFields.promoType,
+      promoFields.discountValue,
+      JSON.stringify(promoFields.targetCategories),
+      promoFields.triggerProductId,
+      promoFields.freeItemLabel,
+      isActive ? 1 : 0,
+      req.params.id
+    ]
   )
   const rows = await query('SELECT * FROM promotions WHERE id = ?', [req.params.id])
   res.json(mapPromotion(rows[0]))
-})
+}))
 
-router.delete('/promotions/:id', async (req, res) => {
+router.delete('/promotions/:id', asyncHandler(async (req, res) => {
   const result = await query('DELETE FROM promotions WHERE id = ?', [req.params.id])
   if (result.affectedRows === 0) return res.status(404).json({ message: 'Promotion not found' })
   res.status(204).send()
-})
+}))
+
+function pickReadMoreUrl(body) {
+  const raw = body?.readMoreUrl ?? body?.read_more_url ?? ''
+  return normalizeReadMoreLinkForSave(raw)
+}
+
+function pickBlogPublished(body) {
+  if (body?.isPublished === undefined || body?.isPublished === null) return true
+  return Boolean(body.isPublished)
+}
 
 // —— Blogs ——
-router.get('/blogs', async (_req, res) => {
-  const rows = await query('SELECT * FROM blogs ORDER BY id DESC')
-  res.json(rows.map(mapBlog))
-})
+router.get(
+  '/blogs',
+  asyncHandler(async (_req, res) => {
+    const rows = await query('SELECT * FROM blogs ORDER BY id DESC')
+    res.json(rows.map(mapBlog))
+  })
+)
 
-router.post('/blogs', async (req, res) => {
-  const { tag, date, title, excerpt, isPublished = true } = req.body
-  if (!tag || !date || !title || !excerpt) {
-    return res.status(400).json({ message: 'Tag, date, title, and excerpt are required' })
-  }
-  const result = await query(
-    `INSERT INTO blogs (tag, post_date, title, excerpt, is_published)
-     VALUES (?, ?, ?, ?, ?)`,
-    [tag, date, title, excerpt, isPublished ? 1 : 0]
-  )
-  const rows = await query('SELECT * FROM blogs WHERE id = ?', [result.insertId])
-  res.status(201).json(mapBlog(rows[0]))
-})
+router.post(
+  '/blogs',
+  asyncHandler(async (req, res) => {
+    const { tag, date, title, excerpt, image = '', isPublished } = req.body
+    if (!tag || !date || !title || !excerpt) {
+      return res.status(400).json({ message: 'Tag, date, title, and excerpt are required' })
+    }
+    const imageUrl = normalizeProductImageUrl(image)
+    const imageError = imageUrl ? productImageUrlErrorMessage(imageUrl) : ''
+    if (imageError) return res.status(400).json({ message: imageError })
+    const linkUrl = pickReadMoreUrl(req.body)
+    const linkError = linkUrl ? readMoreLinkErrorMessage(linkUrl) : ''
+    if (linkError) return res.status(400).json({ message: linkError })
+    const published = pickBlogPublished(req.body)
+    const result = await query(
+      `INSERT INTO blogs (tag, post_date, title, excerpt, image, read_more_url, is_published)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [tag, date, title, excerpt, imageUrl || null, linkUrl || null, published ? 1 : 0]
+    )
+    const rows = await query('SELECT * FROM blogs WHERE id = ?', [result.insertId])
+    res.status(201).json(mapBlog(rows[0]))
+  })
+)
 
-router.put('/blogs/:id', async (req, res) => {
-  const { tag, date, title, excerpt, isPublished } = req.body
-  const existing = await query('SELECT id FROM blogs WHERE id = ?', [req.params.id])
-  if (!existing.length) return res.status(404).json({ message: 'Blog not found' })
-  await query(
-    `UPDATE blogs SET tag = ?, post_date = ?, title = ?, excerpt = ?, is_published = ? WHERE id = ?`,
-    [tag, date, title, excerpt, isPublished ? 1 : 0, req.params.id]
-  )
-  const rows = await query('SELECT * FROM blogs WHERE id = ?', [req.params.id])
-  res.json(mapBlog(rows[0]))
-})
+router.put(
+  '/blogs/:id',
+  asyncHandler(async (req, res) => {
+    const { tag, date, title, excerpt, image = '' } = req.body
+    const existing = await query('SELECT id FROM blogs WHERE id = ?', [req.params.id])
+    if (!existing.length) return res.status(404).json({ message: 'Blog not found' })
+    const imageUrl = normalizeProductImageUrl(image)
+    const imageError = imageUrl ? productImageUrlErrorMessage(imageUrl) : ''
+    if (imageError) return res.status(400).json({ message: imageError })
+    const linkUrl = pickReadMoreUrl(req.body)
+    const linkError = linkUrl ? readMoreLinkErrorMessage(linkUrl) : ''
+    if (linkError) return res.status(400).json({ message: linkError })
+    const published = pickBlogPublished(req.body)
+    await query(
+      `UPDATE blogs SET tag = ?, post_date = ?, title = ?, excerpt = ?, image = ?, read_more_url = ?, is_published = ? WHERE id = ?`,
+      [tag, date, title, excerpt, imageUrl || null, linkUrl || null, published ? 1 : 0, req.params.id]
+    )
+    const rows = await query('SELECT * FROM blogs WHERE id = ?', [req.params.id])
+    res.json(mapBlog(rows[0]))
+  })
+)
 
-router.delete('/blogs/:id', async (req, res) => {
-  const result = await query('DELETE FROM blogs WHERE id = ?', [req.params.id])
-  if (result.affectedRows === 0) return res.status(404).json({ message: 'Blog not found' })
-  res.status(204).send()
-})
+router.delete(
+  '/blogs/:id',
+  asyncHandler(async (req, res) => {
+    const result = await query('DELETE FROM blogs WHERE id = ?', [req.params.id])
+    if (result.affectedRows === 0) return res.status(404).json({ message: 'Blog not found' })
+    res.status(204).send()
+  })
+)
 
 // —— Users ——
 router.get('/users', async (_req, res) => {

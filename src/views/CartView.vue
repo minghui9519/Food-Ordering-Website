@@ -1,44 +1,72 @@
 <template>
   <div class="cart-page grid">
     <PageIntro title="Shopping Cart" description="Review and update selected items before checkout." />
+    <section v-if="activePromotions.length" class="card promo-cart-panel">
+      <h2>Apply promotions</h2>
+      <div class="promo-cart-list">
+        <article
+          v-for="promo in activePromotions"
+          :key="promo.id"
+          class="promo-cart-item"
+          :class="{ applied: cart.isPromotionApplied(promo.id) }"
+        >
+          <div>
+            <p class="pill pill-warm">{{ formatPromoBadge(promo) }}</p>
+            <strong>{{ promo.title }}</strong>
+            <p class="muted">{{ formatPromoDeal(promo, triggerProductName(promo)) }}</p>
+          </div>
+          <button
+            type="button"
+            class="btn"
+            :class="cart.isPromotionApplied(promo.id) ? 'btn-secondary' : 'btn-primary'"
+            @click="cart.togglePromotion(promo.id)"
+          >
+            {{ cart.isPromotionApplied(promo.id) ? 'Applied' : 'Apply' }}
+          </button>
+        </article>
+      </div>
+    </section>
     <section class="content-grid">
       <section class="card list" v-if="cart.items.length">
-        <article class="item" v-for="item in cart.items" :key="itemKey(item)">
+        <article class="item" v-for="line in pricedLines" :key="itemKey(line)">
           <img
             class="thumb"
-            :src="item.image"
-            :alt="item.name"
+            :src="line.image"
+            :alt="line.name"
             loading="lazy"
             decoding="async"
             referrerpolicy="no-referrer"
             @error="onProductImgError"
           />
           <div class="item-info">
-            <h3>{{ item.name }}</h3>
-            <p class="muted">${{ item.price.toFixed(2) }} each</p>
-            <p class="muted" v-if="item.customIngredients?.length">
-              Add: {{ item.customIngredients.join(', ') }}
+            <h3>{{ line.name }}</h3>
+            <p class="muted">${{ line.price.toFixed(2) }} each</p>
+            <p v-if="line.savings > 0" class="line-savings">
+              Promo price: ${{ line.lineTotal.toFixed(2) }} (save ${{ line.savings.toFixed(2) }})
             </p>
-            <p class="muted" v-if="item.removedIngredients?.length">
-              Remove: {{ item.removedIngredients.join(', ') }}
+            <p class="muted" v-if="line.customIngredients?.length">
+              Add: {{ line.customIngredients.join(', ') }}
             </p>
-            <p class="muted" v-if="item.notes">Notes: {{ item.notes }}</p>
+            <p class="muted" v-if="line.removedIngredients?.length">
+              Remove: {{ line.removedIngredients.join(', ') }}
+            </p>
+            <p class="muted" v-if="line.notes">Notes: {{ line.notes }}</p>
           </div>
           <div class="qty-wrap">
             <label class="muted">Qty</label>
             <input
               type="number"
               min="1"
-              :value="item.quantity"
-              @input="cart.updateQuantity(item.id, Number($event.target.value), item.customKey)"
+              :value="line.quantity"
+              @input="cart.updateQuantity(line.id, Number($event.target.value), line.customKey)"
             />
           </div>
           <div class="item-actions">
-            <button class="btn btn-secondary" @click="startEdit(item)">Edit</button>
-            <button class="btn btn-danger" @click="cart.removeFromCart(item.id, item.customKey)">Remove</button>
+            <button class="btn btn-secondary" @click="startEdit(line)">Edit</button>
+            <button class="btn btn-danger" @click="cart.removeFromCart(line.id, line.customKey)">Remove</button>
           </div>
 
-          <div class="edit-panel" v-if="editingKey === itemKey(item)">
+          <div class="edit-panel" v-if="editingKey === itemKey(line)">
             <label>
               Quantity
               <input v-model.number="editForm.quantity" type="number" min="1" />
@@ -64,10 +92,19 @@
               </button>
             </div>
             <div class="edit-actions">
-              <button class="btn btn-primary" @click="saveEdit(item)">Save changes</button>
+              <button class="btn btn-primary" @click="saveEdit(line)">Save changes</button>
               <button class="btn btn-secondary" @click="cancelEdit">Cancel</button>
             </div>
           </div>
+        </article>
+        <article v-for="freebie in cart.freebieRewards" :key="`freebie-${freebie.promoId}`" class="item freebie-item">
+          <div class="freebie-icon">🎁</div>
+          <div class="item-info">
+            <h3>Free {{ freebie.label }}</h3>
+            <p class="muted">Included with {{ freebie.title }}</p>
+          </div>
+          <p class="freebie-qty">x{{ freebie.quantity }}</p>
+          <p class="freebie-price">$0.00</p>
         </article>
       </section>
       <p v-else class="card">Your cart is empty. Add dishes from the menu to continue.</p>
@@ -77,13 +114,31 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import PageIntro from '../components/PageIntro.vue'
 import CartSummary from '../components/CartSummary.vue'
 import { useCartStore } from '../stores/cart'
+import { useCatalogStore } from '../stores/catalog'
 import { foodImageFallbackUrl } from '../data/foodImageMap'
+import { getProductCustomizationOptions } from '../utils/productCustomization'
+import {
+  formatPromoBadge,
+  formatPromoDeal,
+  isPromotionActive
+} from '../utils/promotionUtils'
 
 const cart = useCartStore()
+const catalog = useCatalogStore()
+const activePromotions = computed(() => catalog.promotions.filter(isPromotionActive))
+const pricedLines = computed(() => cart.pricing.lines)
+
+function triggerProductName(promo) {
+  return catalog.products.find((item) => item.id === promo.triggerProductId)?.name ?? ''
+}
+
+onMounted(() => {
+  catalog.fetchAll()
+})
 const editingKey = ref('')
 const editForm = reactive({
   quantity: 1,
@@ -102,30 +157,11 @@ function itemKey(item) {
   return `${item.id}::${item.customKey ?? 'default'}`
 }
 
-function getDefaultIngredients(product) {
-  const key = `${product.cuisineCategory} ${product.category}`.toLowerCase()
-  const options = [
-    'Protein',
-    'Rice',
-    'Vegetables',
-    'Sauce',
-    'Herbs',
-    'Cheese',
-    'Onion',
-    'Garlic'
-  ]
-  if (key.includes('pizza') || key.includes('pasta')) return ['Cheese', 'Sauce', 'Garlic', 'Mushroom', 'Olives']
-  if (key.includes('burger') || key.includes('wrap')) return ['Cheese', 'Onion', 'Lettuce', 'Tomato', 'Sauce']
-  if (key.includes('ramen') || key.includes('noodle')) return ['Noodles', 'Egg', 'Spring onion', 'Chili', 'Broth']
-  if (key.includes('curry') || key.includes('rice')) return ['Protein', 'Rice', 'Chili', 'Herbs', 'Sauce']
-  return options
-}
-
 function startEdit(item) {
   editingKey.value = itemKey(item)
   editForm.quantity = item.quantity
   editForm.notes = item.notes ?? ''
-  editForm.availableIngredients = getDefaultIngredients(item)
+  editForm.availableIngredients = getProductCustomizationOptions(item)
   editForm.selectedIngredients = item.customIngredients?.length
     ? [...item.customIngredients]
     : [...editForm.availableIngredients]
@@ -161,6 +197,68 @@ function saveEdit(item) {
 <style scoped>
 .cart-page {
   gap: 1rem;
+}
+
+.promo-cart-panel {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.promo-cart-panel h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.promo-cart-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.promo-cart-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  border: 1px solid #e8edf5;
+  border-radius: 12px;
+}
+
+.promo-cart-item.applied {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.promo-cart-item p {
+  margin: 0.15rem 0 0;
+}
+
+.line-savings {
+  margin: 0;
+  color: #ea580c;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.freebie-item {
+  background: #f0fdf4;
+  border-radius: 12px;
+  padding: 0.5rem;
+  border-bottom: none;
+}
+
+.freebie-icon {
+  width: 80px;
+  display: grid;
+  place-items: center;
+  font-size: 1.6rem;
+}
+
+.freebie-qty,
+.freebie-price {
+  margin: 0;
+  font-weight: 700;
+  color: #166534;
 }
 
 .content-grid {

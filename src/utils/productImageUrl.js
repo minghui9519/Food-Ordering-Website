@@ -1,4 +1,4 @@
-import { foodImageFallbackUrl } from '../data/foodImageMap'
+import { foodImageFallbackUrl } from '../data/foodImageMap.js'
 
 const MAX_IMAGE_URL_LENGTH = 2048
 

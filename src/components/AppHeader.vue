@@ -1,5 +1,5 @@
 <template>
-  <header class="topbar">
+  <header ref="topbarRef" class="topbar">
     <div class="container">
       <RouterLink to="/" class="brand">FoodyHub</RouterLink>
       <!-- Navigation bar-->
@@ -20,7 +20,6 @@
         </RouterLink>
         <RouterLink v-if="!auth.isCustomerLoggedIn" class="btn btn-secondary" to="/login">Login</RouterLink>
         <RouterLink v-if="!auth.isCustomerLoggedIn" class="btn btn-primary" to="/register">Register</RouterLink>
-        <RouterLink v-if="auth.isAdminLoggedIn" class="btn btn-secondary" to="/admin">Admin</RouterLink>
         <RouterLink class="avatar-link" to="/account" aria-label="User account">
           <span class="avatar-icon" aria-hidden="true">👤</span>
         </RouterLink>
@@ -31,12 +30,30 @@
 </template>
 
 <script setup>
+import { onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useCartStore } from '../stores/cart'
 import { useAuthStore } from '../stores/auth'
 
 const cart = useCartStore()
 const auth = useAuthStore()
+const topbarRef = ref(null)
+
+function syncHeaderHeight() {
+  const height = topbarRef.value?.offsetHeight
+  if (height) {
+    document.documentElement.style.setProperty('--site-header-height', `${height}px`)
+  }
+}
+
+onMounted(() => {
+  syncHeaderHeight()
+  window.addEventListener('resize', syncHeaderHeight)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', syncHeaderHeight)
+})
 </script>
 
 <style scoped>

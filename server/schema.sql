@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS products (
   cuisine_category VARCHAR(80) NOT NULL,
   footer_cuisine VARCHAR(80) NOT NULL,
   image VARCHAR(2048) NOT NULL,
+  customization_options JSON,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -30,8 +31,14 @@ CREATE TABLE IF NOT EXISTS promotions (
   detail TEXT NOT NULL,
   tagline VARCHAR(120) DEFAULT 'Limited time',
   image VARCHAR(2048) NOT NULL,
+  promo_type ENUM('percent', 'bogo', 'freebie') NOT NULL DEFAULT 'percent',
+  discount_value DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  target_categories JSON NOT NULL,
+  trigger_product_id INT NULL,
+  free_item_label VARCHAR(200) NULL,
   is_active TINYINT(1) NOT NULL DEFAULT 1,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (trigger_product_id) REFERENCES products(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS blogs (
@@ -40,6 +47,8 @@ CREATE TABLE IF NOT EXISTS blogs (
   post_date VARCHAR(40) NOT NULL,
   title VARCHAR(250) NOT NULL,
   excerpt TEXT NOT NULL,
+  image VARCHAR(2048) NULL,
+  read_more_url VARCHAR(2048) NULL,
   is_published TINYINT(1) NOT NULL DEFAULT 1,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

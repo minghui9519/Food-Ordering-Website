@@ -184,12 +184,13 @@ onUnmounted(() => {
 
 <style scoped>
 .admin-table-toolbar {
-  padding: 1rem 1.15rem 0;
+  padding: 1rem 1.15rem;
 }
 
 .admin-table-toolbar h2 {
   margin: 0;
   font-size: 1.05rem;
+  line-height: 1.4;
   color: #f1f5f9;
 }
 
@@ -209,10 +210,12 @@ onUnmounted(() => {
 .status-select {
   border: 1px solid #334155;
   border-radius: 6px;
-  padding: 0.35rem 0.5rem;
+  padding: 0.45rem 0.5rem;
   background: #0b1220;
   color: #e2e8f0;
   font-size: 0.85rem;
+  line-height: 1.5;
+  min-height: 2.25rem;
 }
 
 .detail-meta {

@@ -104,17 +104,23 @@
             <tr>
               <th>ID</th>
               <th>Title</th>
+              <th>Type</th>
+              <th>Deal</th>
+              <th>Target</th>
               <th>Active</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="!paginatedPromotions.length">
-              <td colspan="4" class="admin-empty">No promotions yet.</td>
+              <td colspan="7" class="admin-empty">No promotions yet.</td>
             </tr>
             <tr v-for="item in paginatedPromotions" :key="item.id">
               <td>{{ item.id }}</td>
               <td>{{ item.title }}</td>
+              <td>{{ formatPromoTypeLabel(item.promoType) }}</td>
+              <td>{{ formatPromotionDeal(item) }}</td>
+              <td>{{ formatPromotionTarget(item) }}</td>
               <td>{{ item.isActive ? 'Yes' : 'No' }}</td>
               <td class="admin-row-actions">
                 <button type="button" class="admin-btn admin-btn-ghost" @click="editPromotion(item)">Edit</button>
@@ -151,6 +157,7 @@
           <thead>
             <tr>
               <th>ID</th>
+              <th>Image</th>
               <th>Title</th>
               <th>Published</th>
               <th></th>
@@ -158,10 +165,22 @@
           </thead>
           <tbody>
             <tr v-if="!paginatedBlogs.length">
-              <td colspan="4" class="admin-empty">No blog posts yet.</td>
+              <td colspan="5" class="admin-empty">No blog posts yet.</td>
             </tr>
             <tr v-for="item in paginatedBlogs" :key="item.id">
               <td>{{ item.id }}</td>
+              <td class="blog-image-cell">
+                <img
+                  v-if="blogRowImageUrl(item)"
+                  :src="blogRowImageUrl(item)"
+                  :alt="item.title"
+                  class="blog-table-thumb"
+                  referrerpolicy="no-referrer"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span v-else class="muted">—</span>
+              </td>
               <td>{{ item.title }}</td>
               <td>{{ item.isPublished ? 'Yes' : 'No' }}</td>
               <td class="admin-row-actions">
@@ -285,6 +304,51 @@
               Preview could not load. Use a direct https:// link to an image file (jpg, png, webp).
             </p>
           </div>
+          <fieldset class="customization-field span-2">
+            <legend>Customization options</legend>
+            <p class="customization-hint">
+              These options appear on the menu page for this dish. They match the storefront by default.
+            </p>
+            <div class="customization-tools">
+              <div class="customization-add">
+                <input
+                  v-model="newCustomizationOption"
+                  type="text"
+                  placeholder="e.g. Extra cheese, No onion"
+                  @keydown.enter.prevent="addCustomizationOption"
+                />
+                <button type="button" class="admin-btn admin-btn-ghost" @click="addCustomizationOption">
+                  Add
+                </button>
+              </div>
+              <button
+                type="button"
+                class="admin-btn admin-btn-ghost"
+                :disabled="!productModalForm.cuisineCategory || !productModalForm.category"
+                @click="resetCustomizationToDefaults"
+              >
+                Reset to category defaults
+              </button>
+            </div>
+            <ul v-if="productCustomizationOptions.length" class="customization-list">
+              <li
+                v-for="(option, index) in productCustomizationOptions"
+                :key="`${option}-${index}`"
+              >
+                <span>{{ option }}</span>
+                <button
+                  type="button"
+                  class="admin-btn admin-btn-ghost"
+                  @click="removeCustomizationOption(index)"
+                >
+                  Remove
+                </button>
+              </li>
+            </ul>
+            <p v-else class="customization-hint">
+              Select a cuisine and food category to load the default customization options.
+            </p>
+          </fieldset>
         </div>
         <div class="admin-form-actions">
           <button class="admin-btn admin-btn-primary" type="submit">
@@ -300,6 +364,77 @@
         <div class="admin-form-grid">
           <label>Title <input v-model="promotionModalForm.title" required /></label>
           <label>Tagline <input v-model="promotionModalForm.tagline" /></label>
+          <label class="span-2">
+            Promotion type
+            <select v-model="promotionModalForm.promoType">
+              <option value="percent">Discount (% off)</option>
+              <option value="bogo">Buy 1, get 2nd at % off</option>
+              <option value="freebie">Buy item, get free add-on</option>
+            </select>
+          </label>
+          <label
+            v-if="promotionModalForm.promoType === 'percent' || promotionModalForm.promoType === 'bogo'"
+            class="span-2"
+          >
+            Discount percentage
+            <input
+              v-model.number="promotionModalForm.discountValue"
+              type="number"
+              min="1"
+              max="100"
+              step="1"
+              required
+            />
+          </label>
+          <fieldset
+            v-if="promotionModalForm.promoType === 'percent' || promotionModalForm.promoType === 'bogo'"
+            class="span-2 admin-fieldset"
+          >
+            <legend>Target food categories</legend>
+            <p class="admin-hint">Check "All categories" or pick specific ones below.</p>
+            <label class="admin-all-categories">
+              <input
+                v-model="promotionApplyToAllCategories"
+                type="checkbox"
+                @change="onPromotionApplyToAllChange"
+              />
+              <span>All categories</span>
+            </label>
+            <div class="admin-chip-grid">
+              <label
+                v-for="cat in allProductCategories"
+                :key="cat"
+                class="admin-check admin-chip-check"
+              >
+                <input
+                  type="checkbox"
+                  :value="cat"
+                  v-model="promotionModalForm.targetCategories"
+                  @change="onTargetCategoryChange"
+                />
+                {{ cat }}
+              </label>
+            </div>
+          </fieldset>
+          <template v-if="promotionModalForm.promoType === 'freebie'">
+            <label class="span-2">
+              Buy this product
+              <select v-model.number="promotionModalForm.triggerProductId" required>
+                <option :value="null" disabled>Select a product</option>
+                <option v-for="product in products" :key="product.id" :value="product.id">
+                  {{ product.name }} ({{ product.category }})
+                </option>
+              </select>
+            </label>
+            <label class="span-2">
+              Free item label
+              <input
+                v-model="promotionModalForm.freeItemLabel"
+                placeholder="e.g. drink, fries, dessert"
+                required
+              />
+            </label>
+          </template>
           <label class="span-2">Detail <textarea v-model="promotionModalForm.detail" rows="2" required /></label>
           <label class="span-2">
             Image URL
@@ -312,9 +447,21 @@
               required
             />
           </label>
+          <div v-if="promotionImagePreviewUrl" class="image-preview span-2">
+            <img
+              :src="promotionImagePreviewUrl"
+              alt="Promotion image preview"
+              referrerpolicy="no-referrer"
+              @error="promotionImagePreviewFailed = true"
+              @load="promotionImagePreviewFailed = false"
+            />
+            <p v-if="promotionImagePreviewFailed" class="image-preview-error">
+              Preview could not load. Use a direct https:// link to an image file (jpg, png, webp).
+            </p>
+          </div>
           <label class="admin-check">
             <input v-model="promotionModalForm.isActive" type="checkbox" />
-            Active on storefront
+            <span>Active on storefront</span>
           </label>
         </div>
         <div class="admin-form-actions">
@@ -327,15 +474,48 @@
     </AdminModal>
 
     <AdminModal :open="blogModalOpen" :title="blogModalTitle" @close="closeBlogModal">
-      <form class="admin-form" @submit.prevent="saveBlog">
+      <form class="admin-form" novalidate @submit.prevent="saveBlog">
         <div class="admin-form-grid">
           <label>Tag <input v-model="blogModalForm.tag" required /></label>
           <label>Date <input v-model="blogModalForm.date" required /></label>
           <label class="span-2">Title <input v-model="blogModalForm.title" required /></label>
           <label class="span-2">Excerpt <textarea v-model="blogModalForm.excerpt" rows="3" required /></label>
+          <label class="span-2">
+            Image URL
+            <input
+              v-model="blogModalForm.image"
+              type="text"
+              inputmode="url"
+              autocomplete="off"
+              placeholder="https://example.com/blog-cover.jpg"
+            />
+          </label>
+          <div v-if="blogImagePreviewUrl" class="image-preview span-2">
+            <img
+              :src="blogImagePreviewUrl"
+              alt="Blog image preview"
+              referrerpolicy="no-referrer"
+              @error="blogImagePreviewFailed = true"
+              @load="blogImagePreviewFailed = false"
+            />
+            <p v-if="blogImagePreviewFailed" class="image-preview-error">
+              Preview could not load. Use a direct https:// link to an image file (jpg, png, webp).
+            </p>
+          </div>
+          <label class="span-2">
+            Read more link
+            <input
+              v-model="blogModalForm.readMoreUrl"
+              type="text"
+              inputmode="url"
+              autocomplete="off"
+              placeholder="https://example.com/article or /menu"
+            />
+            <span class="field-hint">Where “Read more” goes on the blog page. Leave empty to default to /menu.</span>
+          </label>
           <label class="admin-check">
             <input v-model="blogModalForm.isPublished" type="checkbox" />
-            Published on blog page
+            <span>Published on blog page</span>
           </label>
         </div>
         <div class="admin-form-actions">
@@ -415,10 +595,24 @@ import {
 } from '../data/foodCatalog'
 import { useCatalogStore } from '../stores/catalog'
 import {
+  normalizeLinkUrl,
+  normalizeReadMoreLinkForSave,
+  readMoreLinkErrorMessage
+} from '../utils/linkUrl'
+import {
   isValidHttpImageUrl,
   normalizeProductImageUrl,
   productImageUrlErrorMessage
 } from '../utils/productImageUrl'
+import {
+  getCategoryCustomizationDefaults,
+  getProductCustomizationOptions
+} from '../utils/productCustomization'
+import {
+  formatPromoDeal,
+  promoTargetsAllCategories,
+  PROMO_TYPES
+} from '../utils/promotionUtils'
 
 const catalog = useCatalogStore()
 const activeTab = inject('adminTab', ref('products'))
@@ -464,12 +658,16 @@ const userDetailOpen = ref(false)
 
 const productModalForm = reactive(emptyProduct())
 const productImagePreviewFailed = ref(false)
+const newCustomizationOption = ref('')
+const productCustomizationOptions = ref([])
 
-const productImagePreviewUrl = computed(() => {
-  const url = normalizeProductImageUrl(productModalForm.image)
-  return isValidHttpImageUrl(url) ? url : ''
-})
+const productImagePreviewUrl = computed(() => adminImagePreviewUrl(productModalForm.image))
+const promotionImagePreviewFailed = ref(false)
+const promotionImagePreviewUrl = computed(() => adminImagePreviewUrl(promotionModalForm.image))
+const blogImagePreviewFailed = ref(false)
+const blogImagePreviewUrl = computed(() => adminImagePreviewUrl(blogModalForm.image))
 const promotionModalForm = reactive(emptyPromotion())
+const promotionApplyToAllCategories = ref(true)
 const blogModalForm = reactive(emptyBlog())
 const userModalForm = reactive(emptyUser())
 
@@ -581,6 +779,19 @@ watch([productFilterCuisine, productFilterCategory], () => {
   resetProductPage()
 })
 
+watch(
+  () => [productModalForm.cuisineCategory, productModalForm.category],
+  () => {
+    if (!productModalOpen.value || productModalMode.value !== 'create') return
+    syncProductModalCustomization()
+  }
+)
+
+function adminImagePreviewUrl(value) {
+  const url = normalizeProductImageUrl(value)
+  return isValidHttpImageUrl(url) ? url : ''
+}
+
 function emptyProduct() {
   return {
     id: null,
@@ -594,12 +805,116 @@ function emptyProduct() {
   }
 }
 
+function addCustomizationOption() {
+  const value = newCustomizationOption.value.trim()
+  if (!value) return
+  if (productCustomizationOptions.value.includes(value)) {
+    notify('That option is already listed.', 'error')
+    return
+  }
+  productCustomizationOptions.value = [...productCustomizationOptions.value, value]
+  newCustomizationOption.value = ''
+}
+
+function removeCustomizationOption(index) {
+  productCustomizationOptions.value = productCustomizationOptions.value.filter((_, i) => i !== index)
+}
+
+function resetCustomizationToDefaults() {
+  if (!productModalForm.cuisineCategory || !productModalForm.category) return
+  productCustomizationOptions.value = getCategoryCustomizationDefaults(
+    productModalForm.cuisineCategory,
+    productModalForm.category
+  )
+}
+
+function syncProductModalCustomization() {
+  if (!productModalOpen.value || !productModalForm.cuisineCategory || !productModalForm.category) {
+    return
+  }
+  productCustomizationOptions.value = getCategoryCustomizationDefaults(
+    productModalForm.cuisineCategory,
+    productModalForm.category
+  )
+}
+
 function emptyPromotion() {
-  return { id: null, title: '', detail: '', tagline: 'Limited time', image: '', isActive: true }
+  return {
+    id: null,
+    title: '',
+    detail: '',
+    tagline: 'Limited time',
+    image: '',
+    promoType: PROMO_TYPES.PERCENT,
+    discountValue: 10,
+    targetCategories: [],
+    triggerProductId: null,
+    freeItemLabel: '',
+    isActive: true
+  }
+}
+
+function onPromotionApplyToAllChange() {
+  if (promotionApplyToAllCategories.value) {
+    promotionModalForm.targetCategories = []
+  }
+}
+
+function onTargetCategoryChange() {
+  if (promotionModalForm.targetCategories.length > 0) {
+    promotionApplyToAllCategories.value = false
+  } else {
+    promotionApplyToAllCategories.value = true
+  }
+}
+
+function formatPromoTypeLabel(type) {
+  if (type === PROMO_TYPES.BOGO) return 'Buy 1 get % off'
+  if (type === PROMO_TYPES.FREEBIE) return 'Free add-on'
+  return 'Discount'
+}
+
+function formatPromotionDeal(item) {
+  const trigger = products.value.find((product) => product.id === item.triggerProductId)
+  return formatPromoDeal(item, trigger?.name)
+}
+
+function formatPromotionTarget(item) {
+  if (item.promoType === PROMO_TYPES.FREEBIE) {
+    const trigger = products.value.find((product) => product.id === item.triggerProductId)
+    return trigger ? trigger.name : '—'
+  }
+  if (promoTargetsAllCategories(item)) return 'All categories'
+  return (item.targetCategories ?? []).join(', ') || 'All categories'
 }
 
 function emptyBlog() {
-  return { id: null, tag: '', date: '', title: '', excerpt: '', isPublished: true }
+  return {
+    id: null,
+    tag: '',
+    date: '',
+    title: '',
+    excerpt: '',
+    image: '',
+    readMoreUrl: '',
+    isPublished: true
+  }
+}
+
+function blogRowImageUrl(item) {
+  return adminImagePreviewUrl(item?.image)
+}
+
+function buildBlogPayload(form) {
+  return {
+    tag: form.tag,
+    date: form.date,
+    title: form.title,
+    excerpt: form.excerpt,
+    image: form.image,
+    readMoreUrl: form.readMoreUrl,
+    isPublished: form.isPublished
+  }
 }
 
 function emptyUser() {
@@ -619,8 +934,9 @@ async function loadTabData() {
       const { data } = await adminProducts.list()
       products.value = (data ?? []).filter((item) => item?.id != null)
     } else if (activeTab.value === 'promotions') {
-      const { data } = await adminPromotions.list()
-      promotions.value = data
+      const [promoRes, productRes] = await Promise.all([adminPromotions.list(), adminProducts.list()])
+      promotions.value = promoRes.data
+      products.value = (productRes.data ?? []).filter((item) => item?.id != null)
     } else if (activeTab.value === 'blogs') {
       const { data } = await adminBlogs.list()
       blogs.value = data
@@ -659,17 +975,21 @@ async function refreshCatalog() {
 function closeProductModal() {
   productModalOpen.value = false
   productImagePreviewFailed.value = false
+  newCustomizationOption.value = ''
+  productCustomizationOptions.value = []
   Object.assign(productModalForm, emptyProduct())
 }
 
 function openCreateProduct() {
   Object.assign(productModalForm, emptyProduct())
+  productCustomizationOptions.value = []
   productModalMode.value = 'create'
   productModalOpen.value = true
 }
 
 function editProduct(item) {
   Object.assign(productModalForm, { ...item })
+  productCustomizationOptions.value = [...getProductCustomizationOptions(item)]
   productModalMode.value = 'edit'
   productModalOpen.value = true
 }
@@ -677,7 +997,22 @@ function editProduct(item) {
 function buildProductPayload(form) {
   const footerCuisine = resolveFooterCuisine(form.cuisineCategory)
   const image = normalizeProductImageUrl(form.image)
-  return { ...form, footerCuisine, image }
+  let customizationOptions = productCustomizationOptions.value
+    .map((item) => String(item).trim())
+    .filter(Boolean)
+  if (!customizationOptions.length && form.cuisineCategory && form.category) {
+    customizationOptions = getCategoryCustomizationDefaults(form.cuisineCategory, form.category)
+  }
+  return {
+    name: form.name,
+    description: form.description,
+    price: form.price,
+    category: form.category,
+    cuisineCategory: form.cuisineCategory,
+    footerCuisine,
+    image,
+    customizationOptions
+  }
 }
 
 async function saveProduct() {
@@ -722,19 +1057,53 @@ async function removeProduct(id) {
 
 function closePromotionModal() {
   promotionModalOpen.value = false
+  promotionApplyToAllCategories.value = true
+  promotionImagePreviewFailed.value = false
   Object.assign(promotionModalForm, emptyPromotion())
 }
 
 function openCreatePromotion() {
   Object.assign(promotionModalForm, emptyPromotion())
+  promotionApplyToAllCategories.value = true
   promotionModalMode.value = 'create'
   promotionModalOpen.value = true
 }
 
 function editPromotion(item) {
-  Object.assign(promotionModalForm, { ...item })
+  const promoType = item.promoType || PROMO_TYPES.PERCENT
+  let discountValue = Number(item.discountValue) || 0
+  if (
+    (promoType === PROMO_TYPES.PERCENT || promoType === PROMO_TYPES.BOGO) &&
+    discountValue <= 0
+  ) {
+    discountValue = 10
+  }
+  Object.assign(promotionModalForm, {
+    ...item,
+    promoType,
+    discountValue,
+    targetCategories: [...(item.targetCategories ?? [])],
+    triggerProductId: item.triggerProductId ?? null,
+    freeItemLabel: item.freeItemLabel ?? ''
+  })
+  promotionApplyToAllCategories.value = !(item.targetCategories ?? []).length
   promotionModalMode.value = 'edit'
   promotionModalOpen.value = true
+}
+
+function buildPromotionPayload(form) {
+  return {
+    title: form.title,
+    detail: form.detail,
+    tagline: form.tagline,
+    image: form.image,
+    promoType: form.promoType,
+    discountValue: form.discountValue,
+    targetCategories: [...(form.targetCategories ?? [])],
+    triggerProductId: form.triggerProductId,
+    freeItemLabel: form.freeItemLabel,
+    isActive: form.isActive
+  }
 }
 
 async function savePromotion() {
@@ -744,13 +1113,13 @@ async function savePromotion() {
     return
   }
   promotionModalForm.image = normalizeProductImageUrl(promotionModalForm.image)
+  const payload = buildPromotionPayload(promotionModalForm)
   try {
     if (promotionModalMode.value === 'create') {
-      const { id: _id, ...payload } = promotionModalForm
       await adminPromotions.create(payload)
       notify('Promotion created')
     } else {
-      await adminPromotions.update(promotionModalForm.id, { ...promotionModalForm })
+      await adminPromotions.update(promotionModalForm.id, payload)
       notify('Promotion updated')
     }
     closePromotionModal()
@@ -775,6 +1144,7 @@ async function removePromotion(id) {
 
 function closeBlogModal() {
   blogModalOpen.value = false
+  blogImagePreviewFailed.value = false
   Object.assign(blogModalForm, emptyBlog())
 }
 
@@ -791,13 +1161,34 @@ function editBlog(item) {
 }
 
 async function saveBlog() {
+  const imageUrl = normalizeProductImageUrl(blogModalForm.image)
+  if (imageUrl) {
+    const imageError = productImageUrlErrorMessage(imageUrl)
+    if (imageError) {
+      notify(imageError, 'error')
+      return
+    }
+  }
+  blogModalForm.image = imageUrl
+
+  const linkUrl = normalizeReadMoreLinkForSave(blogModalForm.readMoreUrl)
+  if (linkUrl) {
+    const linkError = readMoreLinkErrorMessage(blogModalForm.readMoreUrl)
+    if (linkError) {
+      notify(linkError, 'error')
+      return
+    }
+  }
+  blogModalForm.readMoreUrl = linkUrl
+
+  const payload = buildBlogPayload(blogModalForm)
+
   try {
     if (blogModalMode.value === 'create') {
-      const { id: _id, ...payload } = blogModalForm
       await adminBlogs.create(payload)
       notify('Blog post created')
     } else {
-      await adminBlogs.update(blogModalForm.id, { ...blogModalForm })
+      await adminBlogs.update(blogModalForm.id, payload)
       notify('Blog post updated')
     }
     closeBlogModal()
@@ -980,6 +1371,13 @@ onUnmounted(() => {
   color: #94a3b8;
 }
 
+.field-hint {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: #64748b;
+  line-height: 1.4;
+}
+
 .admin-form input,
 .admin-form textarea,
 .admin-form select {
@@ -991,12 +1389,33 @@ onUnmounted(() => {
   font-size: 0.9rem;
 }
 
+.admin-form input[type='checkbox'] {
+  width: 1.05rem;
+  height: 1.05rem;
+  padding: 0;
+  margin: 0;
+  accent-color: #3b82f6;
+  cursor: pointer;
+  flex-shrink: 0;
+  border: 1px solid #64748b;
+  border-radius: 4px;
+  background: #0b1220;
+}
+
 .admin-check {
-  display: flex !important;
+  display: inline-flex !important;
   align-items: center;
-  gap: 0.5rem;
-  color: #cbd5e1 !important;
+  gap: 0.55rem;
+  color: #e2e8f0 !important;
   grid-column: span 2;
+  width: fit-content;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.9rem !important;
+}
+
+.admin-check span {
+  line-height: 1.4;
 }
 
 .admin-form-actions {
@@ -1008,20 +1427,22 @@ onUnmounted(() => {
 
 .admin-table-card {
   padding: 0;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: visible;
 }
 
 .admin-table-toolbar {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1rem 1.15rem 0;
+  padding: 1rem 1.15rem;
 }
 
 .admin-table-toolbar h2 {
   margin: 0;
+  line-height: 1.4;
 }
 
 .admin-toolbar-actions {
@@ -1033,7 +1454,7 @@ onUnmounted(() => {
 .admin-filters {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
   gap: 0.75rem;
 }
 
@@ -1041,16 +1462,19 @@ onUnmounted(() => {
   display: grid;
   gap: 0.35rem;
   font-size: 0.8rem;
+  line-height: 1.4;
   color: #94a3b8;
 }
 
 .admin-filters select {
   border: 1px solid #334155;
   border-radius: 8px;
-  padding: 0.55rem 0.65rem;
+  padding: 0.5rem 0.65rem;
   background: #0b1220;
   color: #f8fafc;
   font-size: 0.9rem;
+  line-height: 1.5;
+  min-height: 2.375rem;
   min-width: 10rem;
 }
 
@@ -1080,6 +1504,151 @@ onUnmounted(() => {
   color: #fca5a5;
 }
 
+.blog-image-cell {
+  width: 4.5rem;
+}
+
+.blog-table-thumb {
+  width: 3rem;
+  height: 3rem;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  display: block;
+}
+
+.customization-field {
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 0.85rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.admin-fieldset {
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 0.85rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.admin-fieldset legend {
+  padding: 0 0.35rem;
+  color: #cbd5e1;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.admin-hint {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #94a3b8;
+}
+
+.admin-all-categories {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #cbd5e1;
+  width: fit-content;
+  cursor: pointer;
+  user-select: none;
+}
+
+.admin-all-categories span {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.admin-all-categories input[type='checkbox'] {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.admin-chip-check input[type='checkbox'] {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.admin-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.admin-chip-check {
+  grid-column: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid #334155;
+  border-radius: 999px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.customization-field legend {
+  padding: 0 0.35rem;
+  color: #cbd5e1;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.customization-hint {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #94a3b8;
+}
+
+.customization-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.customization-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  flex: 1 1 16rem;
+}
+
+.customization-add input {
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
+  background: #0b1220;
+  color: #f8fafc;
+}
+
+.customization-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.customization-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: #0f172a;
+}
+
+.customization-list span {
+  color: #e2e8f0;
+  font-size: 0.88rem;
+}
+
 .admin-table {
   width: 100%;
   border-collapse: collapse;
@@ -1088,19 +1657,24 @@ onUnmounted(() => {
 
 .admin-table th {
   text-align: left;
-  padding: 0.65rem 0.85rem;
+  padding: 0.75rem 0.85rem;
   background: #1e293b;
   color: #94a3b8;
   font-weight: 600;
   font-size: 0.75rem;
+  line-height: 1.5;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  vertical-align: middle;
+  white-space: nowrap;
 }
 
 .admin-table td {
-  padding: 0.65rem 0.85rem;
+  padding: 0.75rem 0.85rem;
   border-top: 1px solid #1e293b;
   color: #e2e8f0;
+  line-height: 1.5;
+  vertical-align: middle;
 }
 
 .admin-row-actions {

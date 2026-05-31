@@ -1,39 +1,69 @@
 <template>
-  <div class="auth-page grid">
-    <PageIntro title="Login" description="Sign in to access your dashboard and order history." />
-    <section class="card auth-card">
-      <form class="grid form" @submit.prevent="onLogin">
-        <label>
-          Email
-          <input v-model="email" type="email" required />
-        </label>
-        <label>
-          Password
-          <input v-model="password" type="password" required />
-        </label>
-        <p v-if="error" class="pill pill-warm">{{ error }}</p>
-        <button class="btn btn-primary" type="submit" :disabled="submitting">Login</button>
-      </form>
-      <p class="pill pill-success" v-if="auth.isCustomerLoggedIn">
-        Logged in as {{ auth.customerUser.email }}
+  <AuthPageShell
+    eyebrow="Welcome back"
+    title="Sign in to FoodyHub"
+    description="Access your dashboard, saved details, and order history."
+    panel-title="Customer login"
+    panel-sub="Use the email and password from your account"
+    icon="👋"
+  >
+    <form class="auth-form" @submit.prevent="onLogin">
+      <label class="field">
+        <span class="field-label">Email address</span>
+        <input
+          v-model="email"
+          type="email"
+          required
+          autocomplete="email"
+          placeholder="you@example.com"
+        />
+      </label>
+
+      <label class="field">
+        <span class="field-label">Password</span>
+        <input
+          v-model="password"
+          type="password"
+          required
+          autocomplete="current-password"
+          placeholder="Enter your password"
+        />
+      </label>
+
+      <p v-if="error" class="pill pill-warm form-alert">{{ error }}</p>
+
+      <button class="btn btn-primary submit-btn" type="submit" :disabled="submitting">
+        {{ submitting ? 'Signing in…' : 'Sign in' }}
+      </button>
+    </form>
+
+    <p v-if="auth.isCustomerLoggedIn" class="status-banner pill pill-success">
+      Signed in as {{ auth.customerUser.email }}
+    </p>
+
+    <p v-if="auth.isAdminLoggedIn" class="status-note muted">
+      Admin session active ({{ auth.adminUser.email }}).
+      <a href="/admin.html">Open admin console</a>
+    </p>
+
+    <template #footer>
+      <p>
+        New to FoodyHub?
+        <RouterLink to="/register">Create an account</RouterLink>
       </p>
-      <p class="auth-admin-link muted" v-if="auth.isAdminLoggedIn">
-        Admin session: {{ auth.adminUser.email }} —
-        <a href="/admin.html">Open admin console</a>
-      </p>
-      <p class="auth-admin-link muted">
+      <p class="admin-link">
         Administrator?
         <a href="/admin.html">Open admin portal</a>
       </p>
-    </section>
-  </div>
+    </template>
+  </AuthPageShell>
 </template>
 
 <script setup>
 import { ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
-import PageIntro from '../components/PageIntro.vue'
+import AuthPageShell from '../components/AuthPageShell.vue'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -69,27 +99,57 @@ async function onLogin() {
 </script>
 
 <style scoped>
-.auth-page {
+.auth-form {
+  display: grid;
   gap: 1rem;
 }
 
-.auth-card {
-  width: min(520px, 100%);
-  padding: 1.2rem;
+.field {
+  display: grid;
+  gap: 0.35rem;
 }
 
-.form {
-  gap: 0.8rem;
+.field-label {
+  font-weight: 600;
+  font-size: 0.95rem;
 }
 
-.auth-admin-link {
+.form-alert {
+  margin: 0;
+  justify-content: center;
+  width: 100%;
+}
+
+.submit-btn {
+  width: 100%;
+  padding: 0.85rem 1.25rem;
+  font-size: 1rem;
+  margin-top: 0.15rem;
+}
+
+.status-banner {
+  margin: 1rem 0 0;
+  justify-content: center;
+  width: 100%;
+}
+
+.status-note {
   margin: 0.85rem 0 0;
+  font-size: 0.88rem;
+  text-align: center;
+}
+
+.status-note a {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.admin-link {
+  margin: 0.65rem 0 0;
   font-size: 0.88rem;
 }
 
-.auth-admin-link a {
+.admin-link a {
   color: #2563eb;
-  font-weight: 600;
-  margin-left: 0.25rem;
 }
 </style>

@@ -62,16 +62,14 @@
         <h2 class="section-title">Top Promotions in Your Area</h2>
       </div>
       <div class="promo-card-grid">
-        <article class="promo-card" v-for="promo in promotionCards" :key="promo.id">
-          <span class="pill pill-warm">Promo</span>
-          <img :src="promo.image" :alt="promo.title" />
-          <h3>{{ promo.title }}</h3>
-          <p class="muted">{{ promo.detail }}</p>
-          <div class="promo-meta">
-            <span>{{ promo.tagline }}</span>
-            <RouterLink class="btn btn-secondary" to="/menu">Order now</RouterLink>
-          </div>
-        </article>
+        <PromotionCard
+          v-for="promo in promotionCards"
+          :key="promo.id"
+          :promo="promo"
+          :trigger-product-name="triggerProductName(promo)"
+          variant="compact"
+          :show-apply="false"
+        />
       </div>
       <RouterLink class="see-all-btn" to="/promotions">See all promotions</RouterLink>
     </section>
@@ -118,7 +116,7 @@
                 @keydown.enter.prevent="goToCategoryProduct(category)"
                 @keydown.space.prevent="goToCategoryProduct(category)"
               >
-                <img :src="category.image" :alt="category.name" />
+                <img :src="category.image" :alt="category.name" @load="scheduleSyncLoopWidths" />
                 <h3>{{ category.name }}</h3>
               </article>
             </div>
@@ -156,7 +154,7 @@
                 @keydown.enter.prevent="goToCategoryProduct(category)"
                 @keydown.space.prevent="goToCategoryProduct(category)"
               >
-                <img :src="category.image" :alt="category.name" />
+                <img :src="category.image" :alt="category.name" @load="scheduleSyncLoopWidths" />
                 <h3>{{ category.name }}</h3>
               </article>
             </div>
@@ -181,12 +179,14 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useRouter } from 'vue-router'
 import { cuisineOptions } from '../data/foodCatalog'
 import { useCartStore } from '../stores/cart'
 import { useCatalogStore } from '../stores/catalog'
+import PromotionCard from '../components/PromotionCard.vue'
+import { isPromotionActive } from '../utils/promotionUtils'
 
 const cart = useCartStore()
 const catalog = useCatalogStore()
@@ -209,6 +209,8 @@ let bottomManualVelocity = 0
 let animationFrameId = 0
 let previousFrameTime = 0
 let heroAutoplayIntervalId = 0
+let syncLoopWidthsFrame = 0
+let trackResizeObserver = null
 
 const heroMediaItems = [
   {
@@ -241,7 +243,11 @@ const showPreviousMedia = () => {
   restartHeroAutoplay()
 }
 
-const promotionCards = computed(() => promotions.value)
+const promotionCards = computed(() => promotions.value.filter(isPromotionActive))
+
+function triggerProductName(promo) {
+  return catalog.products.find((item) => item.id === promo.triggerProductId)?.name ?? ''
+}
 
 const categoryCards = computed(() => {
   const imageByCuisine = new Map()
@@ -319,32 +325,68 @@ function shiftBottomRow(direction) {
 }
 
 function syncLoopWidths() {
-  const measuredTop = topTrackRef.value?.scrollWidth ?? 2
-  const measuredBottom = bottomTrackRef.value?.scrollWidth ?? 2
-  topLoopWidth.value = Math.max(measuredTop / 2, 1)
-  bottomLoopWidth.value = Math.max(measuredBottom / 2, 1)
+  if (!topCategoryCards.value.length) return
+
+  const measuredTop = topTrackRef.value?.scrollWidth ?? 0
+  const measuredBottom = bottomTrackRef.value?.scrollWidth ?? 0
+  const nextTopLoop = Math.max(measuredTop / 2, 1)
+  const nextBottomLoop = Math.max(measuredBottom / 2, 1)
+
+  if (nextTopLoop > 1) topLoopWidth.value = nextTopLoop
+  if (nextBottomLoop > 1) bottomLoopWidth.value = nextBottomLoop
+
   topOffset.value = normalizeOffset(topOffset.value, topLoopWidth.value)
   bottomOffset.value = normalizeOffset(bottomOffset.value, bottomLoopWidth.value)
 }
 
+function scheduleSyncLoopWidths() {
+  if (syncLoopWidthsFrame) window.cancelAnimationFrame(syncLoopWidthsFrame)
+  syncLoopWidthsFrame = window.requestAnimationFrame(() => {
+    syncLoopWidthsFrame = 0
+    syncLoopWidths()
+  })
+}
+
+function observeCategoryTracks() {
+  if (!trackResizeObserver) return
+  trackResizeObserver.disconnect()
+  if (topTrackRef.value) trackResizeObserver.observe(topTrackRef.value)
+  if (bottomTrackRef.value) trackResizeObserver.observe(bottomTrackRef.value)
+}
+
 function animateCategoryRows(frameTime) {
   if (!previousFrameTime) previousFrameTime = frameTime
-  const delta = frameTime - previousFrameTime
+  const delta = Math.min(frameTime - previousFrameTime, 48)
   previousFrameTime = frameTime
 
-  if (!isTopRowPaused.value) {
+  const canScroll = categoryCards.value.length > 0 && topLoopWidth.value > 1
+
+  if (canScroll && !isTopRowPaused.value) {
     topOffset.value = normalizeOffset(topOffset.value + delta * categorySpeed, topLoopWidth.value)
   }
-  if (!isBottomRowPaused.value) {
+  if (canScroll && !isBottomRowPaused.value) {
     bottomOffset.value = normalizeOffset(bottomOffset.value - delta * categorySpeed, bottomLoopWidth.value)
   }
 
-  topOffset.value = normalizeOffset(topOffset.value + delta * topManualVelocity, topLoopWidth.value)
-  bottomOffset.value = normalizeOffset(bottomOffset.value + delta * bottomManualVelocity, bottomLoopWidth.value)
-  topManualVelocity *= 0.92
-  bottomManualVelocity *= 0.92
+  if (canScroll) {
+    topOffset.value = normalizeOffset(topOffset.value + delta * topManualVelocity, topLoopWidth.value)
+    bottomOffset.value = normalizeOffset(bottomOffset.value + delta * bottomManualVelocity, bottomLoopWidth.value)
+    topManualVelocity *= 0.92
+    bottomManualVelocity *= 0.92
+  }
 
   animationFrameId = window.requestAnimationFrame(animateCategoryRows)
+}
+
+function onVisibilityChange() {
+  if (document.visibilityState !== 'visible') return
+  isTopRowPaused.value = false
+  isBottomRowPaused.value = false
+  previousFrameTime = 0
+  scheduleSyncLoopWidths()
+  if (!animationFrameId) {
+    animationFrameId = window.requestAnimationFrame(animateCategoryRows)
+  }
 }
 
 function startHeroAutoplay() {
@@ -365,19 +407,39 @@ function restartHeroAutoplay() {
   startHeroAutoplay()
 }
 
+watch(
+  categoryCards,
+  async () => {
+    await nextTick()
+    scheduleSyncLoopWidths()
+    observeCategoryTracks()
+  },
+  { flush: 'post' }
+)
+
 onMounted(async () => {
-  catalog.fetchAll()
+  trackResizeObserver = new ResizeObserver(() => scheduleSyncLoopWidths())
+
+  await catalog.fetchAll()
   await nextTick()
-  syncLoopWidths()
+  scheduleSyncLoopWidths()
+  observeCategoryTracks()
+
   previousFrameTime = 0
   animationFrameId = window.requestAnimationFrame(animateCategoryRows)
-  window.addEventListener('resize', syncLoopWidths)
+  window.addEventListener('resize', scheduleSyncLoopWidths)
+  document.addEventListener('visibilitychange', onVisibilityChange)
   startHeroAutoplay()
 })
 
 onUnmounted(() => {
   window.cancelAnimationFrame(animationFrameId)
-  window.removeEventListener('resize', syncLoopWidths)
+  animationFrameId = 0
+  if (syncLoopWidthsFrame) window.cancelAnimationFrame(syncLoopWidthsFrame)
+  trackResizeObserver?.disconnect()
+  trackResizeObserver = null
+  window.removeEventListener('resize', scheduleSyncLoopWidths)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
   stopHeroAutoplay()
 })
 
@@ -566,46 +628,7 @@ const whyFoodyHub = [
 .promo-card-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.9rem;
-}
-
-.promo-card {
-  border: 1px solid #eceff3;
-  border-radius: 16px;
-  padding: 0.7rem;
-  display: grid;
-  gap: 0.45rem;
-  background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
-}
-
-.promo-card img {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  object-fit: cover;
-  border-radius: 14px;
-}
-
-.promo-card h3 {
-  margin: 0.2rem 0 0.1rem;
-  font-size: 1rem;
-}
-
-.promo-card p {
-  margin: 0;
-  font-size: 0.85rem;
-}
-
-.promo-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.6rem;
-  margin-top: 0.25rem;
-}
-
-.promo-meta span {
-  font-size: 0.8rem;
-  color: #667085;
+  gap: 1rem;
 }
 
 .see-all-btn {

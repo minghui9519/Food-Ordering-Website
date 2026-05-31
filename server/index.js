@@ -2,12 +2,33 @@ import express from 'express'
 import cors from 'cors'
 import { config } from './config.js'
 import { pool } from './db.js'
+import {
+  ensureBlogColumns,
+  ensureCustomizationColumn,
+  ensurePromotionColumns
+} from './ensureDb.js'
 import authRoutes from './routes/auth.js'
 import publicRoutes from './routes/public.js'
 import adminRoutes from './routes/admin.js'
 import orderRoutes from './routes/orders.js'
+import { mapBlog } from './utils/mappers.js'
 
 const app = express()
+
+const blogFieldProbe = mapBlog({
+  id: 0,
+  tag: '',
+  post_date: '',
+  title: '',
+  excerpt: '',
+  image: null,
+  read_more_url: 'https://probe.test',
+  is_published: 1
+})
+if (!blogFieldProbe?.readMoreUrl) {
+  console.error('Blog mapper missing readMoreUrl — check server/utils/mappers.js')
+  process.exit(1)
+}
 
 app.use(cors())
 app.use(express.json())
@@ -34,6 +55,12 @@ app.use('/api/admin', adminRoutes)
 
 app.use((err, _req, res, _next) => {
   console.error(err)
+  if (err.code === 'ER_BAD_FIELD_ERROR') {
+    return res.status(500).json({
+      message:
+        'Database schema is out of date. Restart the server or run: npm run db:migrate-blog-image'
+    })
+  }
   const message =
     err.code === 'ER_BAD_DB_ERROR'
       ? 'Database not found. Run: npm run db:seed'
@@ -48,6 +75,9 @@ app.listen(config.port, async () => {
   console.log('Routes: /api/orders (customer), /api/admin/orders (admin)')
   try {
     await pool.query('SELECT 1')
+    await ensureCustomizationColumn()
+    await ensurePromotionColumns()
+    await ensureBlogColumns()
     console.log(`MySQL connected (${config.db.database})`)
   } catch (err) {
     console.error(

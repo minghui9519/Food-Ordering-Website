@@ -7,6 +7,35 @@
         <p class="muted">Browse cards, preview dish details, and add items in seconds.</p>
       </section>
 
+      <section v-if="activePromotions.length" class="card promo-panel">
+        <div class="promo-panel-head">
+          <h2>Available promotions</h2>
+          <p class="muted">Apply a deal here — savings show on eligible items and in your cart.</p>
+        </div>
+        <div class="promo-list">
+          <article
+            v-for="promo in activePromotions"
+            :key="promo.id"
+            class="promo-item"
+            :class="{ applied: cart.isPromotionApplied(promo.id) }"
+          >
+            <div>
+              <p class="pill pill-warm">{{ formatPromoBadge(promo) }}</p>
+              <h3>{{ promo.title }}</h3>
+              <p class="muted">{{ formatPromoDeal(promo, triggerProductName(promo)) }}</p>
+            </div>
+            <button
+              type="button"
+              class="btn"
+              :class="cart.isPromotionApplied(promo.id) ? 'btn-secondary' : 'btn-primary'"
+              @click="toggleMenuPromotion(promo)"
+            >
+              {{ cart.isPromotionApplied(promo.id) ? 'Applied' : 'Apply promotion' }}
+            </button>
+          </article>
+        </div>
+      </section>
+
       <section class="card filter-card">
         <div class="filter-grid">
           <label for="menu-cuisine">
@@ -43,6 +72,8 @@
           v-for="item in filteredProducts"
           :key="item.id"
           :product="item"
+          :promotions="activePromotions"
+          :applied-promotions="cart.appliedPromotions"
           @add="quickAddToCart"
           @select="openDetail"
         />
@@ -63,7 +94,14 @@
         <p class="pill pill-warm">{{ activeProduct.category }}</p>
         <h2>{{ activeProduct.name }}</h2>
         <p class="muted">{{ activeProduct.description }}</p>
-        <p class="price">${{ activeProduct.price.toFixed(2) }}</p>
+        <p class="price">
+          <template v-if="detailMenuPrice.hasDiscount">
+            <span class="price-old">${{ detailMenuPrice.original.toFixed(2) }}</span>
+            <strong>${{ detailMenuPrice.final.toFixed(2) }}</strong>
+          </template>
+          <strong v-else>${{ activeProduct.price.toFixed(2) }}</strong>
+        </p>
+        <p v-if="detailPromoBadge" class="promo-note">{{ detailPromoBadge }} applied on cart</p>
         <label>
           Quantity
           <input v-model.number="quantity" type="number" min="1" />
@@ -126,6 +164,14 @@ import { foodImageFallbackUrl } from '../data/foodImageMap'
 import { useCartStore } from '../stores/cart'
 import { useCatalogStore } from '../stores/catalog'
 import ProductCard from '../components/ProductCard.vue'
+import { getProductCustomizationOptions } from '../utils/productCustomization'
+import {
+  formatPromoBadge,
+  formatPromoDeal,
+  getMenuUnitPrice,
+  isPromotionActive,
+  promoAppliesToProduct
+} from '../utils/promotionUtils'
 
 const cart = useCartStore()
 const catalog = useCatalogStore()
@@ -139,7 +185,37 @@ const orderNotes = ref('')
 const selectedIngredients = ref([])
 
 const products = computed(() => catalog.products)
+const activePromotions = computed(() => catalog.promotions.filter(isPromotionActive))
 const productCategories = computed(() => allProductCategories)
+
+const detailMenuPrice = computed(() =>
+  activeProduct.value
+    ? getMenuUnitPrice(activeProduct.value, cart.appliedPromotions)
+    : { original: 0, final: 0, hasDiscount: false }
+)
+
+const detailPromoBadge = computed(() => {
+  if (!activeProduct.value || !cart.appliedPromotions.length) return ''
+  const promo = cart.appliedPromotions.find((item) =>
+    promoAppliesToProduct(item, activeProduct.value)
+  )
+  return promo ? formatPromoBadge(promo) : ''
+})
+
+function triggerProductName(promo) {
+  return products.value.find((item) => item.id === promo.triggerProductId)?.name ?? ''
+}
+
+function toggleMenuPromotion(promo) {
+  cart.togglePromotion(promo.id)
+}
+
+function applyPromoFromRoute() {
+  const promoId = Number(route.query.promo)
+  if (!promoId) return
+  const promo = activePromotions.value.find((item) => item.id === promoId)
+  if (promo) cart.applyPromotion(promo.id)
+}
 
 const cuisineFilters = computed(() => {
   const labelsInStock = new Set(products.value.map((item) => item.cuisineCategory))
@@ -175,10 +251,22 @@ function syncFiltersFromRoute() {
     category && productCategories.value.includes(category) ? category : 'All'
 }
 
+function syncPromoRouteState() {
+  if (!catalog.loaded) return
+  applyPromoFromRoute()
+  const productId = Number(route.query.product)
+  if (productId && !activeProduct.value) {
+    const product = products.value.find((item) => item.id === productId)
+    if (product) openDetail(product)
+  }
+}
+
 function buildMenuQuery() {
   const query = {}
   if (selectedCuisine.value !== 'All') query.cuisine = selectedCuisine.value
   if (selectedProductCategory.value !== 'All') query.category = selectedProductCategory.value
+  if (route.query.promo) query.promo = route.query.promo
+  if (route.query.product) query.product = route.query.product
   return query
 }
 
@@ -194,6 +282,12 @@ watch(
   { immediate: true, deep: true }
 )
 
+watch(
+  () => [catalog.loaded, route.query.promo, route.query.product],
+  () => syncPromoRouteState(),
+  { immediate: true }
+)
+
 watch([selectedCuisine, selectedProductCategory], () => {
   const query = buildMenuQuery()
   const currentCuisine = route.query.cuisine ?? undefined
@@ -204,14 +298,15 @@ watch([selectedCuisine, selectedProductCategory], () => {
 })
 
 onMounted(() => {
-  catalog.fetchAll()
+  catalog.fetchAll(true)
 })
 
-function openDetail(product) {
-  activeProduct.value = product
+async function openDetail(product) {
+  const fresh = await catalog.fetchProductById(product.id, true)
+  activeProduct.value = fresh ?? catalog.products.find((item) => item.id === product.id) ?? product
   quantity.value = 1
   orderNotes.value = ''
-  selectedIngredients.value = getDefaultIngredients(product)
+  selectedIngredients.value = [...getProductCustomizationOptions(activeProduct.value)]
 }
 
 function closeDetail() {
@@ -251,27 +346,8 @@ function onProductImgError(event) {
 
 const ingredientOptions = computed(() => {
   if (!activeProduct.value) return []
-  return getDefaultIngredients(activeProduct.value)
+  return getProductCustomizationOptions(activeProduct.value)
 })
-
-function getDefaultIngredients(product) {
-  const key = `${product.cuisineCategory} ${product.category}`.toLowerCase()
-  const options = [
-    'Protein',
-    'Rice',
-    'Vegetables',
-    'Sauce',
-    'Herbs',
-    'Cheese',
-    'Onion',
-    'Garlic'
-  ]
-  if (key.includes('pizza') || key.includes('pasta')) return ['Cheese', 'Sauce', 'Garlic', 'Mushroom', 'Olives']
-  if (key.includes('burger') || key.includes('wrap')) return ['Cheese', 'Onion', 'Lettuce', 'Tomato', 'Sauce']
-  if (key.includes('ramen') || key.includes('noodle')) return ['Noodles', 'Egg', 'Spring onion', 'Chili', 'Broth']
-  if (key.includes('curry') || key.includes('rice')) return ['Protein', 'Rice', 'Chili', 'Herbs', 'Sauce']
-  return options
-}
 
 function toggleIngredient(ingredient) {
   if (!selectedIngredients.value.includes(ingredient)) {
@@ -287,7 +363,7 @@ function selectAllIngredients() {
 
 function resetIngredients() {
   if (!activeProduct.value) return
-  selectedIngredients.value = getDefaultIngredients(activeProduct.value)
+  selectedIngredients.value = [...getProductCustomizationOptions(activeProduct.value)]
 }
 
 function triggerCartFlyAnimation(event) {
@@ -362,17 +438,25 @@ function triggerCartFlyAnimation(event) {
 }
 
 .products {
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 280px));
+  justify-content: start;
+  align-items: stretch;
+}
+
+.products :deep(.product-card) {
+  max-width: none;
 }
 
 .detail-panel {
   position: sticky;
-  top: 1rem;
+  top: calc(var(--site-header-height) + 1rem);
+  max-height: calc(100vh - var(--site-header-height) - 2rem);
   border-radius: 20px;
   border: 1px solid #eceff3;
   background: #fff;
   box-shadow: 0 20px 40px rgba(15, 23, 42, 0.1);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   z-index: 3;
 }
 
@@ -480,6 +564,61 @@ function triggerCartFlyAnimation(event) {
   margin: 0.1rem 0;
 }
 
+.price-old {
+  font-size: 0.95rem;
+  color: #94a3b8;
+  text-decoration: line-through;
+  font-weight: 400;
+  margin-right: 0.35rem;
+}
+
+.promo-note {
+  margin: 0;
+  color: #ea580c;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.promo-panel {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.promo-panel-head h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.1rem;
+}
+
+.promo-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.promo-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid #e8edf5;
+  border-radius: 12px;
+  background: #fafcff;
+}
+
+.promo-item.applied {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.promo-item h3 {
+  margin: 0.25rem 0;
+  font-size: 1rem;
+}
+
+.promo-item p {
+  margin: 0;
+}
+
 .detail-actions {
   display: flex;
   gap: 0.6rem;
@@ -498,8 +637,9 @@ function triggerCartFlyAnimation(event) {
   .detail-panel {
     position: fixed;
     right: 0;
-    top: 0;
+    top: var(--site-header-height);
     bottom: 0;
+    max-height: none;
     width: min(92vw, 380px);
     border-radius: 20px 0 0 20px;
     transform: translateX(0);
@@ -518,6 +658,7 @@ function triggerCartFlyAnimation(event) {
 @media (max-width: 640px) {
   .products {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-content: stretch;
   }
 
   .detail-panel {

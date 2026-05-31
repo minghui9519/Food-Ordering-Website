@@ -32,9 +32,20 @@ export const useCatalogStore = defineStore('catalog', {
         this.loading = false
       }
     },
-    async fetchProductById(id) {
+    async fetchProductById(id, force = false) {
+      if (!force) {
+        const cached = this.products.find((item) => item.id === Number(id))
+        if (cached) return cached
+      }
       const { data } = await catalogApi.fetchProduct(id)
-      return isValidCatalogProduct(data) ? data : null
+      if (!isValidCatalogProduct(data)) return null
+      const index = this.products.findIndex((item) => item.id === data.id)
+      if (index >= 0) {
+        this.products[index] = data
+      } else {
+        this.products.push(data)
+      }
+      return data
     }
   }
 })

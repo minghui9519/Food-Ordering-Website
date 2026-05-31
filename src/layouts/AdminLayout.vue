@@ -156,9 +156,13 @@ onUnmounted(() => {
 .admin-user-chip {
   font-size: 0.85rem;
   color: #94a3b8;
-  padding: 0.35rem 0.65rem;
+  padding: 0.45rem 0.65rem;
   border: 1px solid #334155;
   border-radius: 999px;
+  line-height: 1.5;
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
 }
 
 .admin-link-btn {
@@ -208,11 +212,14 @@ onUnmounted(() => {
   border: none;
   background: transparent;
   color: #cbd5e1;
-  padding: 0.6rem 0.75rem;
+  padding: 0.65rem 0.75rem;
   border-radius: 10px;
   cursor: pointer;
   font-size: 0.9rem;
   font-weight: 500;
+  line-height: 1.5;
+  min-height: 2.5rem;
+  overflow: visible;
 }
 
 .admin-nav-item:hover {
@@ -272,10 +279,16 @@ html.admin-mode #app {
 html.admin-mode .admin-btn {
   border: none;
   border-radius: 8px;
-  padding: 0.5rem 0.9rem;
+  padding: 0.55rem 0.9rem;
   font-size: 0.85rem;
   font-weight: 600;
+  line-height: 1.5;
+  min-height: 2.375rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  overflow: visible;
 }
 
 html.admin-mode .admin-btn-primary {
@@ -313,7 +326,8 @@ html.admin-mode .admin-card {
 
 html.admin-mode .admin-table-card {
   padding: 0;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: visible;
 }
 
 html.admin-mode .admin-table {
@@ -324,18 +338,37 @@ html.admin-mode .admin-table {
 
 html.admin-mode .admin-table th {
   text-align: left;
-  padding: 0.65rem 0.85rem;
+  padding: 0.75rem 0.85rem;
   background: #1e293b;
   color: #94a3b8;
   font-weight: 600;
   font-size: 0.75rem;
+  line-height: 1.5;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  vertical-align: middle;
+  white-space: nowrap;
 }
 
 html.admin-mode .admin-table td {
-  padding: 0.65rem 0.85rem;
+  padding: 0.75rem 0.85rem;
   border-top: 1px solid #1e293b;
   color: #e2e8f0;
+  line-height: 1.5;
+  vertical-align: middle;
+}
+
+html.admin-mode select,
+html.admin-mode .admin-form select {
+  width: auto;
+  line-height: 1.5;
+  min-height: 2.375rem;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+html.admin-mode label {
+  line-height: 1.4;
+  font-weight: 500;
 }
 </style>

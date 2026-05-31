@@ -1,3 +1,4 @@
+import { normalizeLinkUrl } from '../../src/utils/linkUrl.js'
 import { normalizeProductImageUrl, resolveProductImageUrl } from '../../src/utils/productImageUrl.js'
 
 export function mapUser(row) {
@@ -12,8 +13,26 @@ export function mapUser(row) {
   }
 }
 
+function parseJsonArray(value) {
+  if (!value) return []
+  let current = value
+  for (let depth = 0; depth < 3; depth += 1) {
+    if (Array.isArray(current)) return current
+    if (typeof current !== 'string') return []
+    try {
+      current = JSON.parse(current)
+    } catch {
+      return []
+    }
+  }
+  return Array.isArray(current) ? current : []
+}
+
 export function mapProduct(row) {
   if (!row) return null
+  const customizationOptions = parseJsonArray(row.customization_options)
+    .map((item) => String(item).trim())
+    .filter(Boolean)
   return {
     id: row.id,
     name: row.name,
@@ -22,7 +41,8 @@ export function mapProduct(row) {
     category: row.category,
     cuisineCategory: row.cuisine_category,
     footerCuisine: row.footer_cuisine,
-    image: resolveProductImageUrl(row.image)
+    image: resolveProductImageUrl(row.image),
+    customizationOptions
   }
 }
 
@@ -34,6 +54,11 @@ export function mapPromotion(row) {
     detail: row.detail,
     tagline: row.tagline ?? 'Limited time',
     image: resolveProductImageUrl(row.image),
+    promoType: row.promo_type ?? 'percent',
+    discountValue: Number(row.discount_value) || 0,
+    targetCategories: parseJsonArray(row.target_categories),
+    triggerProductId: row.trigger_product_id ?? null,
+    freeItemLabel: row.free_item_label ?? '',
     isActive: Boolean(row.is_active)
   }
 }
@@ -46,17 +71,9 @@ export function mapBlog(row) {
     date: row.post_date,
     title: row.title,
     excerpt: row.excerpt,
+    image: normalizeProductImageUrl(row.image),
+    readMoreUrl: normalizeLinkUrl(row.read_more_url),
     isPublished: Boolean(row.is_published)
-  }
-}
-
-function parseJsonArray(value) {
-  if (!value) return []
-  if (Array.isArray(value)) return value
-  try {
-    return JSON.parse(value)
-  } catch {
-    return []
   }
 }
 
