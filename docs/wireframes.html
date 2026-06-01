@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FoodyHub — Wireframe Design Diagrams</title>
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --paper: #fff;
+      --ink: #1a2332;
+      --muted: #6b7280;
+      --line: #c5cad3;
+      --line-light: #e8eaef;
+      --accent: #ff7a00;
+      --placeholder: #d1d5db;
+      --placeholder-dark: #9ca3af;
+      --shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
+      --radius: 8px;
+      --frame-desktop: 1100px;
+      --frame-mobile: 375px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.45;
+    }
+
+    .doc-header {
+      background: var(--ink);
+      color: #fff;
+      padding: 2rem clamp(1rem, 4vw, 3rem);
+    }
+
+    .doc-header h1 { margin: 0 0 0.35rem; font-size: 1.75rem; }
+    .doc-header p { margin: 0; opacity: 0.85; max-width: 52rem; }
+
+    .doc-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-top: 1rem;
+      font-size: 0.85rem;
+    }
+
+    .doc-meta span {
+      background: rgba(255,255,255,0.12);
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+    }
+
+    .toc {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: var(--paper);
+      border-bottom: 1px solid var(--line);
+      padding: 0.65rem clamp(1rem, 4vw, 3rem);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem 0.75rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+
+    .toc a {
+      color: var(--ink);
+      text-decoration: none;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.3rem 0.65rem;
+      border-radius: 6px;
+      border: 1px solid var(--line-light);
+    }
+
+    .toc a:hover { background: #fff5ed; border-color: #fdba74; color: var(--accent); }
+
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem clamp(1rem, 4vw, 3rem) 4rem;
+    }
+
+    .wireframe-section {
+      margin-bottom: 3.5rem;
+      scroll-margin-top: 4rem;
+    }
+
+    .section-head {
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 2px solid var(--accent);
+    }
+
+    .section-head h2 { margin: 0 0 0.25rem; font-size: 1.35rem; }
+    .section-head .route { font-family: Consolas, monospace; color: var(--accent); font-size: 0.9rem; }
+    .section-head p { margin: 0.35rem 0 0; color: var(--muted); font-size: 0.95rem; }
+
+    .variant-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin: 1.5rem 0 0.5rem;
+    }
+
+    .frame-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2rem;
+      align-items: flex-start;
+    }
+
+    /* —— Wireframe frame —— */
+    .frame {
+      background: var(--paper);
+      border: 2px solid var(--ink);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .frame.desktop { width: 100%; max-width: var(--frame-desktop); }
+    .frame.mobile { width: var(--frame-mobile); }
+
+    .frame-title-bar {
+      background: var(--ink);
+      color: #fff;
+      padding: 0.4rem 0.75rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .annotation {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+      max-width: var(--frame-desktop);
+    }
+
+  /* —— Shared wireframe blocks —— */
+    .wf-header {
+      border-bottom: 2px dashed var(--line);
+      padding: 0.65rem 1rem;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 0.75rem;
+      align-items: center;
+      background: #fafbfc;
+    }
+
+    .wf-header.mobile-h {
+      grid-template-columns: 1fr;
+      text-align: center;
+      gap: 0.5rem;
+    }
+
+    .wf-logo {
+      font-weight: 800;
+      font-size: 1rem;
+      padding: 0.25rem 0.5rem;
+      border: 2px solid var(--ink);
+      border-radius: 4px;
+    }
+
+    .wf-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem 0.6rem;
+      justify-content: center;
+    }
+
+    .wf-nav span {
+      font-size: 0.65rem;
+      padding: 0.2rem 0.45rem;
+      background: var(--line-light);
+      border-radius: 3px;
+      color: var(--muted);
+    }
+
+    .wf-nav span.active {
+      background: #fff0e1;
+      color: var(--accent);
+      font-weight: 700;
+      border: 1px solid var(--accent);
+    }
+
+    .wf-actions {
+      display: flex;
+      gap: 0.35rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .wf-actions.mobile-a { justify-content: center; }
+
+    .wf-btn {
+      font-size: 0.6rem;
+      padding: 0.25rem 0.5rem;
+      border: 1.5px solid var(--ink);
+      border-radius: 999px;
+      background: #fff;
+      font-weight: 600;
+    }
+
+    .wf-btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .wf-footer {
+      border-top: 2px dashed var(--line);
+      padding: 0.75rem 1rem;
+      background: #f8fafc;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.75rem;
+      font-size: 0.6rem;
+    }
+
+    .wf-footer.mobile-f { grid-template-columns: 1fr 1fr; }
+
+    .wf-footer h4 { margin: 0 0 0.35rem; font-size: 0.65rem; }
+    .wf-footer .link { height: 0.45rem; background: var(--line-light); border-radius: 2px; margin-bottom: 0.25rem; }
+
+    .wf-main { padding: 0.75rem 1rem 1rem; min-height: 120px; }
+
+    .wf-label {
+      display: inline-block;
+      font-size: 0.6rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #fff;
+      background: var(--ink);
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
+      margin-bottom: 0.35rem;
+    }
+
+    .wf-block {
+      border: 1.5px solid var(--line);
+      border-radius: 6px;
+      padding: 0.5rem;
+      margin-bottom: 0.5rem;
+      background: #fafbfc;
+    }
+
+    .wf-img {
+      background: linear-gradient(135deg, var(--placeholder) 0%, var(--placeholder-dark) 100%);
+      border: 2px dashed var(--line);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-align: center;
+      min-height: 48px;
+    }
+
+    .wf-text { height: 0.4rem; background: var(--line-light); border-radius: 2px; margin: 0.25rem 0; }
+    .wf-text.short { width: 40%; }
+    .wf-text.med { width: 65%; }
+    .wf-text.title { height: 0.55rem; width: 55%; background: var(--placeholder); }
+
+    .wf-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; }
+    .wf-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
+    .wf-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4rem; }
+
+    .wf-grid-4.mobile-g4,
+    .wf-grid-3.mobile-g3,
+    .wf-grid-2.mobile-g2 { grid-template-columns: 1fr; }
+
+    .wf-card {
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 0.35rem;
+      background: #fff;
+    }
+
+    .wf-card .wf-img { min-height: 36px; font-size: 0.55rem; }
+
+    .wf-hero {
+      position: relative;
+      margin-bottom: 0.5rem;
+    }
+
+    .wf-hero .wf-img { min-height: 140px; }
+    .wf-hero .wf-img.mobile-hero { min-height: 100px; }
+
+    .wf-hero-overlay {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 12%;
+      text-align: center;
+      width: 80%;
+    }
+
+    .wf-two-col {
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      gap: 0.5rem;
+    }
+
+    .wf-two-col.stack { grid-template-columns: 1fr; }
+
+    .wf-side-panel {
+      border: 2px solid var(--accent);
+      border-radius: 6px;
+      padding: 0.4rem;
+      background: #fffaf5;
+    }
+
+    .wf-side-panel .wf-label { background: var(--accent); }
+
+    .wf-form label {
+      display: block;
+      font-size: 0.6rem;
+      font-weight: 600;
+      margin: 0.35rem 0 0.15rem;
+    }
+
+    .wf-input {
+      height: 1.1rem;
+      border: 1.5px solid var(--line);
+      border-radius: 3px;
+      background: #fff;
+      margin-bottom: 0.25rem;
+    }
+
+    .wf-select {
+      height: 1.1rem;
+      border: 1.5px solid var(--line);
+      border-radius: 3px;
+      background: var(--line-light);
+    }
+
+    .wf-chip {
+      display: inline-block;
+      font-size: 0.55rem;
+      padding: 0.15rem 0.35rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      margin: 0.1rem;
+      background: #fff;
+    }
+
+    .wf-chip.on { background: #fff0e1; border-color: var(--accent); }
+
+    .wf-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.55rem;
+    }
+
+    .wf-table th, .wf-table td {
+      border: 1px solid var(--line);
+      padding: 0.25rem 0.35rem;
+      text-align: left;
+    }
+
+    .wf-table th { background: var(--line-light); }
+
+    .wf-drawer-overlay {
+      position: relative;
+      height: 180px;
+      background: repeating-linear-gradient(
+        45deg,
+        #e5e7eb,
+        #e5e7eb 4px,
+        #f3f4f6 4px,
+        #f3f4f6 8px
+      );
+      border-radius: 4px;
+      margin-top: 0.5rem;
+    }
+
+    .wf-drawer {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 55%;
+      background: var(--paper);
+      border-left: 2px solid var(--accent);
+      padding: 0.4rem;
+      box-shadow: -4px 0 12px rgba(0,0,0,0.1);
+    }
+
+    .wf-drawer.full { width: 100%; border-left: none; }
+
+    .wf-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin: 2rem 0;
+      padding: 1rem;
+      background: var(--paper);
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      font-size: 0.8rem;
+    }
+
+    .wf-legend-item { display: flex; align-items: center; gap: 0.4rem; }
+    .wf-legend-swatch { width: 1.25rem; height: 1.25rem; border-radius: 3px; border: 1px solid var(--line); }
+
+    .flow-diagram {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      overflow-x: auto;
+    }
+
+    .flow-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      margin: 0.5rem 0;
+    }
+
+    .flow-box {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.4rem 0.65rem;
+      border: 2px solid var(--ink);
+      border-radius: 6px;
+      background: #fff;
+      text-align: center;
+      min-width: 72px;
+    }
+
+    .flow-box.highlight { border-color: var(--accent); background: #fff5ed; }
+    .flow-arrow { color: var(--muted); font-weight: 700; font-size: 0.85rem; }
+
+    @media print {
+      .toc { position: static; }
+      .wireframe-section { break-inside: avoid; page-break-inside: avoid; }
+      .frame { box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="doc-header">
+    <h1>FoodyHub — Wireframe Design Diagrams</h1>
+    <p>Low-fidelity wireframes for the COS30043 Interface Design and Development project. These diagrams show layout structure, navigation, and content grouping before visual styling.</p>
+    <div class="doc-meta">
+      <span>Vue 3 + Express + MySQL</span>
+      <span>14+ interconnected pages</span>
+      <span>Desktop &amp; mobile variants</span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="Wireframe sections">
+    <a href="#legend">Legend</a>
+    <a href="#global">Global layout</a>
+    <a href="#flow">User flow</a>
+    <a href="#home">Home</a>
+    <a href="#menu">Menu</a>
+    <a href="#cart">Cart</a>
+    <a href="#checkout">Checkout</a>
+    <a href="#auth">Login</a>
+    <a href="#history">History</a>
+    <a href="#admin">Admin</a>
+  </nav>
+
+  <main>
+    <section id="legend" class="wireframe-section">
+      <div class="section-head">
+        <h2>How to read these wireframes</h2>
+        <p class="route">Reference</p>
+        <p>Boxes and labels show where content appears. Grey areas represent images or media. Dashed lines separate major page regions.</p>
+      </div>
+      <div class="wf-legend">
+        <div class="wf-legend-item"><span class="wf-legend-swatch" style="background:linear-gradient(135deg,#d1d5db,#9ca3af)"></span> Image / video placeholder</div>
+        <div class="wf-legend-item"><span class="wf-legend-swatch" style="background:#fafbfc;border:1.5px solid #c5cad3"></span> Content card / section</div>
+        <div class="wf-legend-item"><span class="wf-legend-swatch" style="background:#fff0e1;border-color:#ff7a00"></span> Active nav / detail panel</div>
+        <div class="wf-legend-item"><span class="wf-legend-swatch" style="background:#1a2332"></span> Section label tag</div>
+        <div class="wf-legend-item"><span class="wf-btn primary" style="font-size:0.7rem">Button</span> Primary action</div>
+      </div>
+    </section>
+
+    <section id="global" class="wireframe-section">
+      <div class="section-head">
+        <h2>1. Global layout (PublicLayout)</h2>
+        <p class="route">All customer pages — shared header &amp; footer</p>
+        <p>Every public page uses the same shell: sticky header, scrollable main content, and footer with quick links.</p>
+      </div>
+      <div class="frame-wrap">
+        <div class="frame desktop">
+          <div class="frame-title-bar"><span>Desktop · 1140px max content</span><span>PublicLayout</span></div>
+          <div class="wf-header">
+            <span class="wf-logo">FoodyHub</span>
+            <div class="wf-nav">
+              <span class="active">Home</span><span>Product</span><span>Promotion</span><span>History</span><span>About Us</span><span>Blog</span>
+            </div>
+            <div class="wf-actions">
+              <span class="wf-btn">Cart (0)</span><span class="wf-btn">Login</span><span class="wf-btn primary">Register</span><span class="wf-btn">👤</span>
+            </div>
+          </div>
+          <div class="wf-main" style="min-height:200px;text-align:center;display:flex;align-items:center;justify-content:center;background:#f9fafb;border:2px dashed var(--line);margin:0 1rem 1rem;border-radius:6px;">
+            <div><span class="wf-label">Main content</span><br><span style="font-size:0.75rem;color:var(--muted)">RouterView — page-specific content below</span></div>
+          </div>
+          <div class="wf-footer">
+            <div><h4>FoodyHub</h4><div class="wf-text med"></div><div class="wf-text short"></div></div>
+            <div><h4>Popular Products</h4><div class="link"></div><div class="link"></div><div class="link"></div></div>
+            <div><h4>Popular Cuisines</h4><div class="link"></div><div class="link"></div><div class="link"></div></div>
+            <div><h4>About Us</h4><div class="link"></div><div class="link"></div></div>
+          </div>
+        </div>
+      </div>
+      <p class="annotation">Header uses a 3-column grid (logo | navigation | actions). On mobile, these stack vertically and center-align.</p>
+    </section>
+
+    <section id="flow" class="wireframe-section">
+      <div class="section-head">
+        <h2>2. Primary user flow</h2>
+        <p class="route">Ordering journey</p>
+        <p>Main task flow from discovery to order completion.</p>
+      </div>
+      <div class="flow-diagram">
+        <div class="flow-row">
+          <span class="flow-box">Home</span><span class="flow-arrow">→</span>
+          <span class="flow-box highlight">Menu</span><span class="flow-arrow">→</span>
+          <span class="flow-box">Product detail</span><span class="flow-arrow">→</span>
+          <span class="flow-box highlight">Cart</span><span class="flow-arrow">→</span>
+          <span class="flow-box highlight">Checkout</span><span class="flow-arrow">→</span>
+          <span class="flow-box">Order history</span>
+        </div>
+        <div class="flow-row" style="margin-top:1rem">
+          <span class="flow-box">Register</span><span class="flow-arrow">→</span>
+          <span class="flow-box">Login</span><span class="flow-arrow">→</span>
+          <span class="flow-box">Dashboard</span><span class="flow-arrow">→</span>
+          <span class="flow-box">Account</span>
+        </div>
+        <div class="flow-row" style="margin-top:1rem">
+          <span class="flow-box">Promotions</span>
+          <span class="flow-box">Blog</span>
+          <span class="flow-box">About</span>
+          <span class="flow-box">Footer cuisines</span>
+          <span class="flow-arrow">|</span>
+          <span class="flow-box" style="border-style:dashed">Admin (separate)</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="home" class="wireframe-section">
+      <div class="section-head">
+        <h2>3. Home / Landing page</h2>
+        <p class="route">/</p>
+        <p>Hero carousel, service highlights, promotions, and cuisine category explorer.</p>
+      </div>
+      <p class="variant-label">Desktop</p>
+      <div class="frame desktop">
+        <div class="frame-title-bar"><span>HomeView</span><span>/</span></div>
+        <div class="wf-header"><span class="wf-logo">FoodyHub</span><div class="wf-nav"><span class="active">Home</span><span>Product</span><span>…</span></div><div class="wf-actions"><span class="wf-btn">Cart</span><span class="wf-btn primary">Register</span></div></div>
+        <div class="wf-main">
+          <span class="wf-label">Hero banner</span>
+          <div class="wf-hero">
+            <div class="wf-img">Image / Video carousel · ‹ ›</div>
+            <div class="wf-hero-overlay">
+              <div class="wf-text short" style="margin:0 auto"></div>
+              <div class="wf-text title" style="margin:0.35rem auto"></div>
+              <span class="wf-btn primary" style="display:inline-block;margin-top:0.35rem">View Menu</span>
+            </div>
+          </div>
+          <span class="wf-label">Service strip (4 columns)</span>
+          <div class="wf-grid-4" style="margin-bottom:0.5rem">
+            <div class="wf-card"><div class="wf-text title"></div><div class="wf-text med"></div></div>
+            <div class="wf-card"><div class="wf-text title"></div><div class="wf-text med"></div></div>
+            <div class="wf-card"><div class="wf-text title"></div><div class="wf-text med"></div></div>
+            <div class="wf-card"><div class="wf-text title"></div><div class="wf-text med"></div></div>
+          </div>
+          <span class="wf-label">Top promotions</span>
+          <div class="wf-grid-3" style="margin-bottom:0.35rem">
+            <div class="wf-card"><div class="wf-img">Promo</div><div class="wf-text title"></div></div>
+            <div class="wf-card"><div class="wf-img">Promo</div><div class="wf-text title"></div></div>
+            <div class="wf-card"><div class="wf-img">Promo</div><div class="wf-text title"></div></div>
+          </div>
+          <span class="wf-btn" style="margin-bottom:0.5rem">See all promotions</span>
+          <span class="wf-label">Explore by cuisine (carousel)</span>
+          <div style="display:flex;gap:0.35rem;align-items:center">
+            <span class="wf-btn">‹</span>
+            <div class="wf-grid-4" style="flex:1">
+              <div class="wf-card"><div class="wf-img">Cuisine</div><div class="wf-text short"></div></div>
+              <div class="wf-card"><div class="wf-img">Cuisine</div><div class="wf-text short"></div></div>
+              <div class="wf-card"><div class="wf-img">Cuisine</div><div class="wf-text short"></div></div>
+              <div class="wf-card"><div class="wf-img">Cuisine</div><div class="wf-text short"></div></div>
+            </div>
+            <span class="wf-btn">›</span>
+          </div>
+        </div>
+        <div class="wf-footer"><div><h4>FoodyHub</h4></div><div><h4>Products</h4></div><div><h4>Cuisines</h4></div><div><h4>About</h4></div></div>
+      </div>
+    </section>
+
+    <section id="menu" class="wireframe-section">
+      <div class="section-head">
+        <h2>4. Menu / Product listing</h2>
+        <p class="route">/menu</p>
+        <p>Filters, promotions, product grid, and side detail panel (drawer on tablet/mobile).</p>
+      </div>
+      <p class="variant-label">Desktop — two columns</p>
+      <div class="frame desktop">
+        <div class="frame-title-bar"><span>MenuView</span><span>/menu</span></div>
+        <div class="wf-header"><span class="wf-logo">FoodyHub</span><div class="wf-nav"><span>Home</span><span class="active">Product</span><span>…</span></div><div class="wf-actions"><span class="wf-btn">Cart (2)</span></div></div>
+        <div class="wf-main">
+          <div class="wf-two-col">
+            <div>
+              <div class="wf-block"><span class="wf-label">Menu hero</span><div class="wf-text title"></div><div class="wf-text med"></div></div>
+              <div class="wf-block"><span class="wf-label">Promotions panel</span><div class="wf-text short"></div><span class="wf-btn primary" style="font-size:0.55rem">Apply promotion</span></div>
+              <div class="wf-block">
+                <span class="wf-label">Filters</span>
+                <div class="wf-grid-2"><div><label style="font-size:0.55rem">Cuisine</label><div class="wf-select"></div></div><div><label style="font-size:0.55rem">Category</label><div class="wf-select"></div></div></div>
+              </div>
+              <span class="wf-label">Product grid</span>
+              <div class="wf-grid-3">
+                <div class="wf-card"><div class="wf-img">Photo</div><div class="wf-text title"></div><div class="wf-text short"></div><div style="display:flex;gap:0.25rem;margin-top:0.25rem"><span class="wf-btn" style="font-size:0.5rem">View</span><span class="wf-btn primary" style="font-size:0.5rem">Add</span></div></div>
+                <div class="wf-card"><div class="wf-img">Photo</div><div class="wf-text title"></div><span class="wf-btn primary" style="font-size:0.5rem">Add</span></div>
+                <div class="wf-card"><div class="wf-img">Photo</div><div class="wf-text title"></div><span class="wf-btn primary" style="font-size:0.5rem">Add</span></div>
+              </div>
+            </div>
+            <div class="wf-side-panel">
+              <span class="wf-label">Detail panel</span>
+              <div class="wf-img" style="min-height:72px">Product image</div>
+              <div class="wf-text title"></div>
+              <div class="wf-text med"></div>
+              <div style="margin:0.35rem 0"><span class="wf-chip on">Cheese</span><span class="wf-chip">Sauce</span><span class="wf-chip">+</span></div>
+              <label style="font-size:0.55rem">Qty</label><div class="wf-input" style="width:3rem"></div>
+              <span class="wf-btn primary" style="display:block;text-align:center;margin-top:0.35rem">Add to Cart</span>
+            </div>
+          </div>
+        </div>
+        <div class="wf-footer"><div><h4>FoodyHub</h4></div><div></div><div></div><div></div></div>
+      </div>
+
+      <p class="variant-label">Mobile — slide-in drawer (≤1024px)</p>
+      <div class="frame-wrap">
+        <div class="frame mobile">
+          <div class="frame-title-bar"><span>375px</span><span>Menu + drawer</span></div>
+          <div class="wf-header mobile-h"><span class="wf-logo">FoodyHub</span><div class="wf-nav"><span class="active">Product</span><span>Cart</span></div></div>
+          <div class="wf-main" style="padding:0.5rem">
+            <div class="wf-block"><div class="wf-select"></div></div>
+            <div class="wf-grid-2 mobile-g2">
+              <div class="wf-card"><div class="wf-img">Photo</div><div class="wf-text short"></div></div>
+              <div class="wf-card"><div class="wf-img">Photo</div><div class="wf-text short"></div></div>
+            </div>
+            <div class="wf-drawer-overlay">
+              <div class="wf-drawer full">
+                <span class="wf-label">Detail drawer</span>
+                <div class="wf-img" style="min-height:48px">Image</div>
+                <div class="wf-text title"></div>
+                <span class="wf-btn primary" style="width:100%;text-align:center">Add to Cart</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="annotation">Tapping a product card opens the detail panel as a fixed overlay from the right; on phones it expands to full width.</p>
+    </section>
+
+    <section id="cart" class="wireframe-section">
+      <div class="section-head">
+        <h2>5. Shopping cart</h2>
+        <p class="route">/cart</p>
+        <p>Line items with quantity controls, promotion application, and order summary.</p>
+      </div>
+      <div class="frame desktop">
+        <div class="frame-title-bar"><span>CartView</span><span>/cart</span></div>
+        <div class="wf-header"><span class="wf-logo">FoodyHub</span><div class="wf-nav"><span class="active">—</span></div><div class="wf-actions"><span class="wf-btn">Cart (3)</span></div></div>
+        <div class="wf-main">
+          <div class="wf-text title" style="width:30%"></div>
+          <div class="wf-block"><span class="wf-label">Apply promotions</span><div class="wf-text med"></div><span class="wf-btn primary" style="font-size:0.55rem">Apply</span></div>
+          <div class="wf-two-col" style="grid-template-columns:1.4fr 0.8fr">
+            <div class="wf-block">
+              <span class="wf-label">Cart line items</span>
+              <div style="display:grid;grid-template-columns:auto 1fr auto;gap:0.4rem;align-items:start;margin-bottom:0.35rem">
+                <div class="wf-img" style="width:48px;min-height:48px">Thumb</div>
+                <div><div class="wf-text title"></div><div class="wf-text med"></div><div class="wf-text short"></div></div>
+                <div><label style="font-size:0.5rem">Qty</label><div class="wf-input" style="width:2.5rem"></div></div>
+              </div>
+              <div style="display:flex;gap:0.25rem"><span class="wf-btn">Edit</span><span class="wf-btn">Remove</span></div>
+            </div>
+            <div class="wf-block" style="background:#fffaf5;border-color:var(--accent)">
+              <span class="wf-label" style="background:var(--accent)">Cart summary</span>
+              <div class="wf-text med"></div><div class="wf-text med"></div>
+              <div class="wf-text title" style="margin-top:0.5rem"></div>
+              <span class="wf-btn primary" style="display:block;text-align:center;margin-top:0.5rem">Proceed to Checkout</span>
+            </div>
+          </div>
+        </div>
+        <div class="wf-footer"><div><h4>FoodyHub</h4></div><div></div><div></div><div></div></div>
+      </div>
+    </section>
+
+    <section id="checkout" class="wireframe-section">
+      <div class="section-head">
+        <h2>6. Checkout</h2>
+        <p class="route">/checkout</p>
+        <p>Order summary, delivery form, Leaflet map picker, and place order (login required).</p>
+      </div>
+      <div class="frame desktop">
+        <div class="frame-title-bar"><span>CheckoutView</span><span>/checkout</span></div>
+        <div class="wf-header"><span class="wf-logo">FoodyHub</span><div class="wf-nav"></div><div class="wf-actions"><span class="wf-btn">Cart</span></div></div>
+        <div class="wf-main">
+          <div class="wf-two-col">
+            <div class="wf-block">
+              <span class="wf-label">Order summary</span>
+              <div style="display:flex;gap:0.35rem;margin-bottom:0.35rem"><div class="wf-img" style="width:40px;min-height:40px"></div><div style="flex:1"><div class="wf-text title"></div><div class="wf-text short"></div></div><span style="font-size:0.6rem;font-weight:700">$12.00</span></div>
+              <div class="wf-text med"></div><div class="wf-text title" style="margin-top:0.35rem"></div>
+            </div>
+            <div class="wf-block">
+              <span class="wf-label">Delivery details</span>
+              <div class="wf-form">
+                <label>Full name</label><div class="wf-input"></div>
+                <label>Phone</label><div class="wf-input"></div>
+                <label>Address</label><div class="wf-input"></div>
+              </div>
+              <div style="display:flex;gap:0.25rem;margin:0.35rem 0"><span class="wf-btn">Find on map</span><span class="wf-btn">Use my location</span></div>
+              <div class="wf-img" style="min-height:80px">Leaflet map · delivery pin</div>
+              <span class="wf-btn primary" style="display:block;text-align:center;margin-top:0.5rem">Place Order</span>
+            </div>
+          </div>
+        </div>
+        <div class="wf-footer"><div><h4>FoodyHub</h4></div><div></div><div></div><div></div></div>
+      </div>
+      <p class="annotation">Below 900px width, order summary and delivery form stack vertically.</p>
+    </section>
+
+    <section id="auth" class="wireframe-section">
+      <div class="section-head">
+        <h2>7. Login &amp; Register</h2>
+        <p class="route">/login · /register</p>
+        <p>Centered AuthPageShell with hero card and form panel.</p>
+      </div>
+      <div class="frame-wrap">
+        <div class="frame desktop" style="max-width:520px">
+          <div class="frame-title-bar"><span>LoginView</span><span>/login</span></div>
+          <div class="wf-header"><span class="wf-logo">FoodyHub</span><div class="wf-nav"></div><div class="wf-actions"></div></div>
+          <div class="wf-main" style="display:flex;flex-direction:column;align-items:center">
+            <div class="wf-block" style="width:100%;text-align:center"><div class="wf-text short" style="margin:0 auto"></div><div class="wf-text title" style="margin:0.5rem auto"></div></div>
+            <div class="wf-block" style="width:100%">
+              <span class="wf-label">Customer login</span>
+              <div class="wf-form"><label>Email</label><div class="wf-input"></div><label>Password</label><div class="wf-input"></div></div>
+              <span class="wf-btn primary" style="display:block;text-align:center;width:100%;margin-top:0.5rem">Sign in</span>
+              <p style="font-size:0.6rem;text-align:center;margin:0.5rem 0 0;color:var(--muted)">New? Create an account · Admin portal link</p>
+            </div>
+          </div>
+          <div class="wf-footer" style="grid-template-columns:1fr"><div><h4>FoodyHub</h4></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="history" class="wireframe-section">
+      <div class="section-head">
+        <h2>8. Order history</h2>
+        <p class="route">/history</p>
+        <p>Summary stats and expandable order cards with delivery and line-item details.</p>
+      </div>
+      <div class="frame desktop">
+        <div class="frame-title-bar"><span>HistoryView</span><span>/history</span></div>
+        <div class="wf-header"><span class="wf-logo">FoodyHub</span><div class="wf-nav"><span class="active">History</span></div><div class="wf-actions"></div></div>
+        <div class="wf-main">
+          <div class="wf-grid-2" style="max-width:320px;margin-bottom:0.5rem">
+            <div class="wf-card" style="text-align:center;padding:0.5rem"><strong style="font-size:0.85rem">5</strong><br><span style="font-size:0.55rem;color:var(--muted)">Orders</span></div>
+            <div class="wf-card" style="text-align:center;padding:0.5rem"><strong style="font-size:0.85rem">$128</strong><br><span style="font-size:0.55rem;color:var(--muted)">Total spent</span></div>
+          </div>
+          <div class="wf-block">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div><strong style="font-size:0.7rem">Order #12</strong> <span class="wf-chip on" style="font-size:0.5rem">Preparing</span><br><span style="font-size:0.55rem;color:var(--muted)">31 May · 3 items</span></div>
+              <div style="text-align:right"><strong style="font-size:0.75rem">$45.00</strong><br>▼</div>
+            </div>
+          </div>
+          <div class="wf-block" style="border-color:var(--accent)">
+            <div style="display:flex;justify-content:space-between"><strong style="font-size:0.7rem">Order #11</strong><span>▲</span></div>
+            <span class="wf-label" style="margin-top:0.35rem">Expanded: delivery + line items</span>
+            <table class="wf-table" style="margin-top:0.35rem">
+              <thead><tr><th>Item</th><th>Qty</th><th>Price</th></tr></thead>
+              <tbody><tr><td>Burger</td><td>2</td><td>$24</td></tr><tr><td>Fries</td><td>1</td><td>$8</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="wf-footer"><div><h4>FoodyHub</h4></div><div></div><div></div><div></div></div>
+      </div>
+    </section>
+
+    <section id="admin" class="wireframe-section">
+      <div class="section-head">
+        <h2>9. Admin console</h2>
+        <p class="route">/admin · admin.html</p>
+        <p>Separate layout: sidebar navigation, data tables, modals for CRUD. No public footer.</p>
+      </div>
+      <div class="frame desktop">
+        <div class="frame-title-bar"><span>AdminLayout + AdminView</span><span>/admin</span></div>
+        <div style="background:#1e293b;color:#fff;padding:0.5rem 1rem;display:flex;justify-content:space-between;font-size:0.7rem">
+          <span><strong>FoodyHub</strong> Administration</span>
+          <span>Admin name · Sign out</span>
+        </div>
+        <div style="display:grid;grid-template-columns:160px 1fr;min-height:220px">
+          <div style="background:#f1f5f9;border-right:2px solid var(--line);padding:0.5rem;font-size:0.6rem">
+            <strong style="display:block;margin-bottom:0.35rem">Manage</strong>
+            <div class="wf-block" style="background:#fff0e1;border-color:var(--accent);margin-bottom:0.25rem">Products</div>
+            <div class="wf-block" style="margin-bottom:0.25rem">Promotions</div>
+            <div class="wf-block" style="margin-bottom:0.25rem">Blog posts</div>
+            <div class="wf-block" style="margin-bottom:0.25rem">Users</div>
+            <div class="wf-block">Transactions</div>
+          </div>
+          <div style="padding:0.75rem">
+            <div class="wf-text title"></div>
+            <div style="display:flex;gap:0.35rem;margin:0.5rem 0"><span class="wf-btn primary">Add product</span><div class="wf-select" style="width:80px"></div><div class="wf-select" style="width:80px"></div></div>
+            <table class="wf-table">
+              <thead><tr><th>ID</th><th>Name</th><th>Price</th><th>Category</th><th>Actions</th></tr></thead>
+              <tbody>
+                <tr><td>1</td><td>Classic Burger</td><td>$12</td><td>Burger</td><td><span class="wf-btn" style="font-size:0.5rem">Edit</span> <span class="wf-btn" style="font-size:0.5rem">Delete</span></td></tr>
+                <tr><td>2</td><td>Margherita</td><td>$15</td><td>Pizza</td><td>Edit · Delete</td></tr>
+              </tbody>
+            </table>
+            <p style="font-size:0.55rem;color:var(--muted);margin-top:0.35rem">« Pagination »</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="wireframe-section">
+      <div class="section-head">
+        <h2>10. Other pages (summary)</h2>
+        <p class="route">Supporting pages</p>
+      </div>
+      <div class="wf-grid-2" style="max-width:900px">
+        <div class="wf-block"><strong style="font-size:0.75rem">Dashboard /dashboard</strong><p style="font-size:0.65rem;margin:0.35rem 0 0;color:var(--muted)">Welcome card + quick links (Order Again, History)</p></div>
+        <div class="wf-block"><strong style="font-size:0.75rem">Account /account</strong><p style="font-size:0.65rem;margin:0.35rem 0 0;color:var(--muted)">Profile view/edit: name, email, phone, address</p></div>
+        <div class="wf-block"><strong style="font-size:0.75rem">Promotions /promotions</strong><p style="font-size:0.65rem;margin:0.35rem 0 0;color:var(--muted)">Grid of PromotionCard with Apply buttons</p></div>
+        <div class="wf-block"><strong style="font-size:0.75rem">Blog /blog</strong><p style="font-size:0.65rem;margin:0.35rem 0 0;color:var(--muted)">Featured post + article grid from API</p></div>
+        <div class="wf-block"><strong style="font-size:0.75rem">About /about</strong><p style="font-size:0.65rem;margin:0.35rem 0 0;color:var(--muted)">Brand story, features, contact sections</p></div>
+        <div class="wf-block"><strong style="font-size:0.75rem">Footer cuisines /footer-cuisines</strong><p style="font-size:0.65rem;margin:0.35rem 0 0;color:var(--muted)">Cuisine filter + product grid (like Menu)</p></div>
+      </div>
+    </section>
+  </main>
+
+  <footer style="text-align:center;padding:2rem;color:var(--muted);font-size:0.85rem;border-top:1px solid var(--line)">
+    FoodyHub wireframes — open this file in a browser, screenshot each section for your COS30043 report, or print to PDF (Ctrl+P).
+  </footer>
+</body>
+</html>
